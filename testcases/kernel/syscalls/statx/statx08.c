@@ -1,8 +1,27 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (c) 2017 Instruction Ignorer <"can't"@be.bothered.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 /*
  * Test statx
  *
- * Check if statx exists and what error code it returns when we give it dodgy
- * data. Then stat a file and check it returns success.
+ * Check if statx exists and what error code
+ * it returns when we give it dodgy data.
+ * Then stat a file and check it returns success.
  */
 
 #include <stdio.h>
@@ -48,29 +67,28 @@ struct statx {
 };
 
 static int sys_statx(int dirfd, const char *pathname, int flags,
-		     unsigned int mask, struct statx *statxbuf)
+			unsigned int mask, struct statx *statxbuf)
 {
 	return tst_syscall(__NR_statx, dirfd, pathname, flags, mask, statxbuf);
 }
 
 static void setup(void)
 {
-        fd = SAFE_OPEN(FNAME, O_CREAT, 0777);
-        SAFE_LINK(FNAME, LNAME);
-        lfd = SAFE_OPEN(LNAME, 0); 
+	fd = SAFE_OPEN(FNAME, O_CREAT, 0777);
+	SAFE_LINK(FNAME, LNAME);
+	lfd = SAFE_OPEN(LNAME, 0);
 }
 
 static void cleanup(void)
 {
-        if (lfd != 0)
-                SAFE_CLOSE(lfd);
+	if (lfd != 0)
+		SAFE_CLOSE(lfd);
 
-        if (fd != 0)
-                SAFE_CLOSE(fd);
+	if (fd != 0)
+		SAFE_CLOSE(fd);
 }
 
-
-static void run(void)
+static void run_stat_null(void)
 {
 	struct statx statxbuf = { 0 };
 
@@ -80,29 +98,38 @@ static void run(void)
 	else if (TST_ERR == EFAULT)
 		tst_res(TPASS, "statx set errno to EFAULT as expected");
 	else
-		tst_res(TFAIL | TERRNO, "statx set errno to some unexpected value");
+		tst_res(TFAIL | TERRNO, "statx set errno to some unexpected
+				value");
+}
 
-	TEST(sys_statx(AT_FDCWD, FNAME, 0, STATX_BASIC_STATS, &statxbuf));
-	if (TST_RET == 0)
-		tst_res(TPASS, "It returned zero so it must have worked!");
-	else
-		tst_res(TFAIL | TERRNO, "statx can not stat a basic file");
+static void run_stat_symlink(void)
+{
+	struct statx statxbuf = { 0 };
 
 	TEST(sys_statx(AT_FDCWD, LNAME, 0, STATX_BASIC_STATS, &statxbuf));
 	if (TST_RET == 0)
 		tst_res(TPASS, "It returned zero so it must have worked!");
 	else
 		tst_res(TFAIL | TERRNO, "statx can not stat a basic file");
+}
 
-	printf("statx.stx_nlink = %d", statxbuf.stx_nlink);
+struct test_cases {
+	void (*tfunc)(void);
+} tcases[] = {
+	{&run_stat_null},
+	{&run_stat_symlink},
+};
 
+static void run(unsigned int i)
+{
+	tcases[i].tfunc();
 }
 
 static struct tst_test test = {
 	.setup = setup,
 	.cleanup = cleanup,
-	.test_all = run,
-	//.tcnt = 2,
+	.test = run,
+	.tcnt = 2,
 	.min_kver = "4.11",
 	.needs_tmpdir = 1
 };
