@@ -98,8 +98,8 @@ static void run_stat_null(void)
 	else if (TST_ERR == EFAULT)
 		tst_res(TPASS, "statx set errno to EFAULT as expected");
 	else
-		tst_res(TFAIL | TERRNO, "statx set errno to some unexpected
-				value");
+		tst_res(TFAIL | TERRNO,
+			"statx set errno to some unexpected value");
 }
 
 static void run_stat_symlink(void)
