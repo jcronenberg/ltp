@@ -26,13 +26,13 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "test.h"
+#include "tst_test.h"
 #include "lapi/syscalls.h"
 
-char *TCID = "timer_gettime01";
+//char *TCID = "timer_gettime01";
 int TST_TOTAL = 3;
 
-static void cleanup(void)
+/*static void cleanup(void)
 {
 	tst_rmdir();
 }
@@ -41,9 +41,9 @@ static void setup(void)
 {
 	TEST_PAUSE;
 	tst_tmpdir();
-}
+}*/
 
-int main(int ac, char **av)
+static void run(int ac, char **av)
 {
 	int lc;
 
@@ -53,44 +53,46 @@ int main(int ac, char **av)
 
 	tst_parse_opts(ac, av, NULL, NULL);
 
-	setup();
-
 	ev.sigev_value = (union sigval) 0;
 	ev.sigev_signo = SIGALRM;
 	ev.sigev_notify = SIGEV_SIGNAL;
-	TEST(ltp_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &timer));
+	TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &timer));
 
-	if (TEST_RETURN != 0)
-		tst_brkm(TBROK | TERRNO, cleanup, "Failed to create timer");
+	if (TST_RET != 0)
+		tst_brk(TBROK | TERRNO, "Failed to create timer");
 
 	for (lc = 0; TEST_LOOPING(lc); ++lc) {
 		tst_count = 0;
 
-		TEST(ltp_syscall(__NR_timer_gettime, timer, &spec));
-		if (TEST_RETURN == 0) {
-			tst_resm(TPASS, "timer_gettime(CLOCK_REALTIME) Passed");
+		TEST(tst_syscall(__NR_timer_gettime, timer, &spec));
+		if (TST_RET == 0) {
+			tst_res(TPASS, "timer_gettime(CLOCK_REALTIME) Passed");
 		} else {
-			tst_resm(TFAIL | TERRNO,
+			tst_res(TFAIL | TERRNO,
 			         "timer_gettime(CLOCK_REALTIME) Failed");
 		}
 
 		TEST(ltp_syscall(__NR_timer_gettime, -1, &spec));
-		if (TEST_RETURN == -1 && TEST_ERRNO == EINVAL) {
-			tst_resm(TPASS,	"timer_gettime(-1) Failed: EINVAL");
+		if (TST_RET == -1 && TST_ERR == EINVAL) {
+			tst_res(TPASS,	"timer_gettime(-1) Failed: EINVAL");
 		} else {
-			tst_resm(TFAIL | TERRNO,
-			         "timer_gettime(-1) = %li", TEST_RETURN);
+			tst_res(TFAIL | TERRNO,
+			         "timer_gettime(-1) = %li", TST_RET);
 		}
 
 		TEST(ltp_syscall(__NR_timer_gettime, timer, NULL));
-		if (TEST_RETURN == -1 && TEST_ERRNO == EFAULT) {
-			tst_resm(TPASS,	"timer_gettime(NULL) Failed: EFAULT");
+		if (TST_RET == -1 && TST_ERR == EFAULT) {
+			tst_res(TPASS,	"timer_gettime(NULL) Failed: EFAULT");
 		} else {
-			tst_resm(TFAIL | TERRNO,
-			         "timer_gettime(-1) = %li", TEST_RETURN);
+			tst_res(TFAIL | TERRNO,
+			         "timer_gettime(-1) = %li", TST_RET);
 		}
 	}
 
-	cleanup();
-	tst_exit();
 }
+
+static struct tst_test test = {
+	//.setup = setup,
+	.test_all = run,
+	.needs_tmpdir = 1
+};
