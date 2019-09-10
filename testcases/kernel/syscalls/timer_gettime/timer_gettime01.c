@@ -72,7 +72,7 @@ static void run(int ac, char **av)
 			         "timer_gettime(CLOCK_REALTIME) Failed");
 		}
 
-		TEST(ltp_syscall(__NR_timer_gettime, -1, &spec));
+		TEST(tst_syscall(__NR_timer_gettime, -1, &spec));
 		if (TST_RET == -1 && TST_ERR == EINVAL) {
 			tst_res(TPASS,	"timer_gettime(-1) Failed: EINVAL");
 		} else {
@@ -80,7 +80,7 @@ static void run(int ac, char **av)
 			         "timer_gettime(-1) = %li", TST_RET);
 		}
 
-		TEST(ltp_syscall(__NR_timer_gettime, timer, NULL));
+		TEST(tst_syscall(__NR_timer_gettime, timer, NULL));
 		if (TST_RET == -1 && TST_ERR == EFAULT) {
 			tst_res(TPASS,	"timer_gettime(NULL) Failed: EFAULT");
 		} else {
@@ -88,11 +88,10 @@ static void run(int ac, char **av)
 			         "timer_gettime(-1) = %li", TST_RET);
 		}
 	}
-
 }
 
 static struct tst_test test = {
 	//.setup = setup,
-	.test_all = run,
+	.test = run,
 	.needs_tmpdir = 1
 };
