@@ -20,11 +20,11 @@
  *                                                                            *
  ******************************************************************************/
 
-#include <time.h>
+//#include <time.h>
 #include <signal.h>
-#include <sys/syscall.h>
-#include <stdio.h>
-#include <errno.h>
+//#include <sys/syscall.h>
+//#include <stdio.h>
+//#include <errno.h>
 
 #include "tst_test.h"
 #include "lapi/syscalls.h"
@@ -39,15 +39,24 @@ static void setup(void)
 	TEST_PAUSE;
 	tst_tmpdir();
 }*/
-/*
- * TODO
- * remove for loop
- * instead put timer and spec into a nice struct
- * prob add a replace into the struct aswell
- * not necessary but more elegant
- * more futurproof fingers crossed
- */
 
+struct test_case {
+	struct itimerspec spec;
+	int timer;
+};
+
+struct test_case tc[] = {
+	{
+	 .type = CLOCK_REALTIME,
+	 .spec.sigev_value = 0
+	}
+	{
+	 .type = CLOCK_REALTIME,
+	 .spec.sigev_signo = SIGALRM
+	}
+};
+
+//static 
 
 static void get_time(unsigned int n)
 {
@@ -57,15 +66,21 @@ static void get_time(unsigned int n)
 	struct itimerspec spec;
 	int timer;
 
+	//tst_parse_opts(ac, av, NULL, NULL);
+
 	ev.sigev_value = (union sigval) 0;
 	ev.sigev_signo = SIGALRM;
 	ev.sigev_notify = SIGEV_SIGNAL;
-	TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &timer));
+	TEST(timer_create(CLOCK_REALTIME, &ev, &timer));
+
+	//TEST(timer_gettime(tc[n].type, &timer));
 
 	if (TST_RET != 0)
 		tst_brk(TBROK | TERRNO, "Failed to create timer");
 
 	for (lc = 0; lc<n; ++lc) {
+		//tst_count = 0;
+
 		TEST(tst_syscall(__NR_timer_gettime, timer, &spec));
 		if (TST_RET == 0) {
 			tst_res(TPASS, "timer_gettime(CLOCK_REALTIME) Passed");
