@@ -29,9 +29,6 @@
 #include "tst_test.h"
 #include "lapi/syscalls.h"
 
-//char *TCID = "timer_gettime01";
-int TST_TOTAL = 3;
-
 /*static void cleanup(void)
 {
 	tst_rmdir();
@@ -43,7 +40,7 @@ static void setup(void)
 	tst_tmpdir();
 }*/
 
-static void run(int ac, char **av)
+static void get_time(void)
 {
 	int lc;
 
@@ -51,7 +48,7 @@ static void run(int ac, char **av)
 	struct itimerspec spec;
 	int timer;
 
-	tst_parse_opts(ac, av, NULL, NULL);
+	//tst_parse_opts(ac, av, NULL, NULL);
 
 	ev.sigev_value = (union sigval) 0;
 	ev.sigev_signo = SIGALRM;
@@ -62,7 +59,7 @@ static void run(int ac, char **av)
 		tst_brk(TBROK | TERRNO, "Failed to create timer");
 
 	for (lc = 0; TEST_LOOPING(lc); ++lc) {
-		tst_count = 0;
+		//tst_count = 0;
 
 		TEST(tst_syscall(__NR_timer_gettime, timer, &spec));
 		if (TST_RET == 0) {
@@ -92,6 +89,6 @@ static void run(int ac, char **av)
 
 static struct tst_test test = {
 	//.setup = setup,
-	.test = run,
+	.test_all = get_time,
 	.needs_tmpdir = 1
 };
