@@ -48,53 +48,78 @@ static void setup(void)
  * more futurproof fingers crossed
  */
 
-
-static void get_time(unsigned int n)
-{
-	unsigned int lc;
-
-	struct sigevent ev;
-	struct itimerspec spec;
+struct test_case {
+	//int create_timer;
+	char desc[100];
+	int exp_err;
 	int timer;
+	struct itimerspec *spec;
+};
+
+struct test_case tc[] = {
+	{
+	 //.create_timer = 1,
+	 .desc = "timer_gettime(CLOCK_REALTIME)",
+	 .timer = 0,
+	 .exp_err = 0,
+	 },
+	{
+	 .desc = "timer_gettime(minusone)",
+	 .timer = -1,
+	 .exp_err = EINVAL,
+	 },
+	{
+	 //.create_timer = 1,
+	 .desc = "timer_gettime(NULL)",
+	 .timer = 0,
+	 .exp_err = EFAULT,	 
+	 .spec = NULL,
+	 },
+};
+
+static int create_timer = 0;
+
+static void run(unsigned int n)
+{
+	struct sigevent ev;
+	
+	create_timer++;
 
 	ev.sigev_value = (union sigval) 0;
 	ev.sigev_signo = SIGALRM;
 	ev.sigev_notify = SIGEV_SIGNAL;
-	TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &timer));
+	if(create_timer == 1) {
+		TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &tc[n].timer));
 
-	if (TST_RET != 0)
-		tst_brk(TBROK | TERRNO, "Failed to create timer");
+		printf ("Created Timer");
 
-	for (lc = 0; lc<n; ++lc) {
-		TEST(tst_syscall(__NR_timer_gettime, timer, &spec));
-		if (TST_RET == 0) {
-			tst_res(TPASS, "timer_gettime(CLOCK_REALTIME) Passed");
-		} else {
-			tst_res(TFAIL | TERRNO,
-			         "timer_gettime(CLOCK_REALTIME) Failed");
-		}
+		if (TST_RET != 0)
+			tst_brk(TBROK | TERRNO, "Failed to create timer");
+	} 
+	
+	printf("timerid:%i", tc[n].timer);
 
-		TEST(tst_syscall(__NR_timer_gettime, -1, &spec));
-		if (TST_RET == -1 && TST_ERR == EINVAL) {
-			tst_res(TPASS,	"timer_gettime(-1) Failed: EINVAL");
-		} else {
-			tst_res(TFAIL | TERRNO,
-			         "timer_gettime(-1) = %li", TST_RET);
-		}
+	unsigned int i;
 
-		TEST(tst_syscall(__NR_timer_gettime, timer, NULL));
-		if (TST_RET == -1 && TST_ERR == EFAULT) {
-			tst_res(TPASS,	"timer_gettime(NULL) Failed: EFAULT");
-		} else {
-			tst_res(TFAIL | TERRNO,
-			         "timer_gettime(-1) = %li", TST_RET);
-		}
+	for (i = 0; i < ARRAY_SIZE(tc); i++) {
+	TEST(tst_syscall(__NR_timer_gettime, tc[i].timer, &tc[i].spec));
+	
+	//printf("\nTST_RET = %li \nTST_ERR = %i\nDesc = %s", TST_RET, TST_ERR, tc[n].desc);	
+	if (TST_RET == tc[i].exp_err) {
+		tst_res(TPASS, "%s Passed", tc[i].desc);
+	} else if (TST_RET == -1 && TST_ERR == tc[i].exp_err) {
+		tst_res(TPASS,  "%s failed expectedly", tc[i].desc);
+	} else if (TST_RET == 0)  {
+		tst_res(TFAIL | TERRNO, "%s succeded unexpectedly", tc[i].desc);
+	} else {
+		tst_res(TFAIL | TERRNO, "%s failed", tc[i].desc);
+	}
 	}
 }
 
 static struct tst_test test = {
 	//.setup = setup,
-	.test = get_time,
+	.test = run,
 	.needs_tmpdir = 1,
 	.tcnt = 1,
 };
