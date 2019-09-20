@@ -51,11 +51,11 @@ static void run(void)
 		tst_res(TPASS, "clone3 worked as expected");
 
 
-	/*TEST(sys_clone3(&uargs, 0));
+	TEST(sys_clone3(&uargs, 0));
 	if (TST_RET == -1)
 		tst_res(TPASS, "clone3 failed as expected");
 	else
-		tst_res(TFAIL | TTERRNO, "clone3 worked which wasn't intended");*/
+		tst_res(TFAIL | TTERRNO, "clone3 worked which wasn't intended");
 }
 
 static struct tst_test test = {
