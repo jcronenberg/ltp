@@ -64,8 +64,10 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <lapi/syscalls.h>
 #include <sched.h>
 #include "tst_test.h"
+#include "tst_safe_macros.h"
 
 #define FLAG_ALL (CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|SIGCHLD)
 #define FLAG_NONE SIGCHLD
@@ -78,12 +80,12 @@
 
 struct clone_args {
         uint64_t flags;
-        uint64_t *pidfd;
-        uint64_t *child_tid;
-        uint64_t *parent_tid;
+        uint64_t pidfd;
+        uint64_t child_tid;
+        uint64_t parent_tid;
         uint64_t exit_signal;
         uint64_t stack;
-        uint64_t stack_size;
+        uint64_t *stack_size;
         uint64_t tls;
 };
 
@@ -93,7 +95,7 @@ static void setup(void);
 static int test_setup(void);
 static void cleanup(void);
 static void test_cleanup(void);
-static int child_fn();
+static long child_fn();
 static int parent_test1(void);
 static int parent_test2(void);
 static int test_VM(void);
@@ -131,13 +133,13 @@ struct test_case_t {
 static void run(unsigned int i)
 {
 	struct clone_args uargs = {0};
+	size = sizeof(uargs);
 	int status;
 
 
-
-	uargs.stack = malloc(CHILD_STACK_SIZE);
+	uargs.stack_size = malloc(CHILD_STACK_SIZE);
 	uargs.flags = test_cases[i].flags;
-	if (child_stack == NULL)
+	if (uargs.stack_size == NULL)
 		tst_brk(TBROK, "Cannot allocate stack for child");
 
 			if (test_setup() != 0) {
@@ -146,8 +148,7 @@ static void run(unsigned int i)
 			}
 
 			/* Test the system call */
-			TEST(ltp_clone(test_cases[i].flags, child_fn, NULL,
-				       CHILD_STACK_SIZE, child_stack));
+			TEST(sys_clone3(&uargs, size));
 
 			/* check return code */
 			if (TST_RET == -1) {
@@ -181,7 +182,7 @@ static void run(unsigned int i)
 
 			/* Do test specific cleanup */
 
-	free(child_stack);
+	free(uargs.stack_size);
 
 }
 
@@ -254,7 +255,7 @@ static void test_cleanup(void)
 
 }
 
-static int child_fn(void)
+static long child_fn(void)
 {
 
 	/* save child pid */
