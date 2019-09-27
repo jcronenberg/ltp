@@ -179,7 +179,6 @@ static void run(unsigned int i)
 }
 
 static struct tst_test test = {
-	.needs_root = 1,
 	.test = run,
 	.tcnt = 2,
 	.forks_child = 1,
