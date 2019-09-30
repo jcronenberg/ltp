@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+<<<<<<< HEAD
 /* 
  * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
  *
@@ -8,6 +9,25 @@
  * 10/2019	Jorik Cronenberg <jcronenberg@suse.de>
  *
  * DESCRIPTION
+=======
+/**********************************************************
+ *
+ *    TEST IDENTIFIER	: ptrace01
+ *
+ *    EXECUTED BY	: anyone
+ *
+ *    TEST TITLE	: functionality test for ptrace(2)
+ *
+ *    TEST CASE TOTAL	: 2
+ *
+ *    AUTHOR		: Saji Kumar.V.R <saji.kumar@wipro.com>
+ *
+ *    SIGNALS
+ * 	Uses SIGUSR1 to pause before test if option set.
+ * 	(See the parse_opts(3) man page).
+ *
+ *    DESCRIPTION
+>>>>>>> 9a941f9c73871b8ef578e8d9c7e8d0bb70860bc8
  *	This test case tests the functionality of ptrace() for
  *	PTRACE_TRACEME & PTRACE_KILL requests.
  *	Here, we fork a child & the child does ptrace(PTRACE_TRACEME, ...).
@@ -31,8 +51,15 @@
 #include "ptrace.h"
 #include "tst_test.h"
 
+<<<<<<< HEAD
 static int got_signal;
 
+=======
+#include "tst_test.h"
+
+static int got_signal;
+
+>>>>>>> 9a941f9c73871b8ef578e8d9c7e8d0bb70860bc8
 void child_handler(void)
 {
 	if ((kill(getppid(), SIGUSR2)) == -1) {
