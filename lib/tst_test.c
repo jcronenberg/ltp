@@ -177,7 +177,7 @@ static void print_result(const char *file, const int lineno, int ttype,
 {
 	char buf[1024];
 	char *str = buf;
-	int ret, size = sizeof(buf), ssize;
+	int ret, size = sizeof(buf), ssize, int_errno;
 	const char *str_errno = NULL;
 	const char *res;
 
@@ -205,15 +205,19 @@ static void print_result(const char *file, const int lineno, int ttype,
 		abort();
 	}
 
-	if (ttype & TERRNO)
+	if (ttype & TERRNO) {
 		str_errno = tst_strerrno(errno);
+		int_errno = errno;
+	}
 
-	if (ttype & TTERRNO)
+	if (ttype & TTERRNO) {
 		str_errno = tst_strerrno(TST_ERR);
+		int_errno = TST_ERR;
+	}
 
 	if (ttype & TRERRNO) {
-		ret = TST_RET < 0 ? -(int)TST_RET : (int)TST_RET;
-		str_errno = tst_strerrno(ret);
+		int_errno = TST_RET < 0 ? -(int)TST_RET : (int)TST_RET;
+		str_errno = tst_strerrno(int_errno);
 	}
 
 	ret = snprintf(str, size, "%s:%i: ", file, lineno);
@@ -237,7 +241,7 @@ static void print_result(const char *file, const int lineno, int ttype,
 				"Next message is too long and truncated:");
 	} else if (str_errno) {
 		ssize = size - 2;
-		ret = snprintf(str, size, ": %s", str_errno);
+		ret = snprintf(str, size, ": %s (%d)", str_errno, int_errno);
 		str += MIN(ret, ssize);
 		size -= MIN(ret, ssize);
 		if (ret >= ssize)
@@ -891,11 +895,17 @@ static void do_test_setup(void)
 {
 	main_pid = getpid();
 
+	if (tst_test->caps)
+		tst_cap_setup(tst_test->caps, TST_CAP_REQ);
+
 	if (tst_test->setup)
 		tst_test->setup();
 
 	if (main_pid != getpid())
 		tst_brk(TBROK, "Runaway child in setup()!");
+
+	if (tst_test->caps)
+		tst_cap_setup(tst_test->caps, TST_CAP_DROP);
 }
 
 static void do_cleanup(void)

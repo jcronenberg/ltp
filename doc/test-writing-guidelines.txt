@@ -1769,6 +1769,170 @@ setting up the size or struct iovec, which is allocated recursively including
 the individual buffers as described by an '-1' terminated array of buffer
 sizes.
 
+2.2.32 Adding and removing capabilities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some tests may require the presence or absence of particular
+capabilities. Using the API provided by 'tst_capability.h' the test author can
+try to ensure that some capabilities are either present or absent during the
+test.
+
+For example; below we try to create a raw socket, which requires
+CAP_NET_ADMIN. During setup we should be able to do it, then during run it
+should be impossible. The LTP capability library will check before setup that
+we have this capability, then after setup it will drop it.
+
+[source,c]
+--------------------------------------------------------------------------------
+#include "tst_test.h"
+#include "tst_capability.h"
+#include "tst_safe_net.h"
+
+#include "lapi/socket.h"
+
+static void run(void)
+{
+	TEST(socket(AF_INET, SOCK_RAW, 1));
+	if (TST_RET > -1) {
+		tst_res(TFAIL, "Created raw socket");
+	} else if (TST_ERR != EPERM) {
+		tst_res(TBROK | TTERRNO,
+			"Failed to create socket for wrong reason");
+	} else {
+		tst_res(TPASS | TTERRNO, "Didn't create raw socket");
+	}
+}
+
+static void setup(void)
+{
+	TEST(socket(AF_INET, SOCK_RAW, 1));
+	if (TST_RET < 0)
+		tst_brk(TCONF | TTERRNO, "We don't have CAP_NET_RAW to begin with");
+
+	SAFE_CLOSE(TST_RET);
+}
+
+static struct tst_test test = {
+	.setup = setup,
+	.test_all = run,
+	.caps = (struct tst_cap []) {
+		TST_CAP(TST_CAP_REQ, CAP_NET_RAW),
+		TST_CAP(TST_CAP_DROP, CAP_NET_RAW),
+		{}
+	},
+};
+--------------------------------------------------------------------------------
+
+Look at the test struct at the bottom. We have filled in the 'caps' field with
+a NULL terminated array containing two 'tst_cap' structs. 'TST_CAP_REQ'
+actions are executed before setup and 'TST_CAP_DROP' are executed after
+setup. This means it is possible to both request and drop a capability.
+
+[source,c]
+--------------------------------------------------------------------------------
+static struct tst_test test = {
+	.test_all = run,
+	.caps = (struct tst_cap []) {
+		TST_CAP(TST_CAP_REQ, CAP_NET_RAW),
+		TST_CAP(TST_CAP_DROP, CAP_SYS_ADMIN),
+		{}
+	},
+};
+--------------------------------------------------------------------------------
+
+Here we request 'CAP_NET_RAW', but drop 'CAP_SYS_ADMIN'. If the capability is
+in the permitted set, but not the effective set, the library will try to
+permit it. If it is not in the permitted set, then it will fail with 'TCONF'.
+
+This API does not require 'libcap' to be installed. However it has limited
+features relative to 'libcap'. It only tries to add or remove capabilities
+from the effective set. This means that tests which need to spawn child
+processes may have difficulties ensuring the correct capabilities are
+available to the children (see the capabilities (7) manual pages).
+
+However a lot of problems can be solved by using 'tst_cap_action(struct
+tst_cap  *cap)' directly which can be called at any time. This also helps if
+you wish to drop a capability at the begining of setup.
+
+2.2.33 Reproducing race-conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If a bug is caused by two tasks in the kernel racing and you wish to create a
+regression test (or bug-fix validation test) then the 'tst_fuzzy_sync.h'
+library should be used.
+
+It allows you to specify, in your code, two race windows. One window in each
+thread's loop (triggering a race usually requires many iterations). These
+windows show fuzzy-sync where the race can happen. They don't need to be
+exact, hence the 'fuzzy' part. If the race condition is not immediately
+triggered then the library will begin experimenting with different timings.
+
+[source,c]
+--------------------------------------------------------------------------------
+#include "tst_fuzzy_sync.h"
+
+static struct tst_fzsync_pair fzsync_pair;
+
+static void setup(void)
+{
+        tst_fzsync_pair_init(&fzsync_pair);
+}
+
+static void cleanup(void)
+{
+	tst_fzsync_pair_cleanup(&fzsync_pair);
+}
+
+static void *thread_b(void *arg)
+{
+	while (tst_fzsync_run_b(&fzsync_pair)) {
+
+		tst_fzsync_start_race_b(&fzsync_pair);
+
+                /* This is the race window for thread B */
+
+                tst_fzsync_end_race_b(&fzsync_pair);
+	}
+
+	return arg;
+}
+
+static void thread_a(void)
+{
+	tst_fzsync_pair_reset(&fzsync_pair, thread_b);
+
+        while (tst_fzsync_run_a(&fzsync_pair)) {
+
+		tst_fzsync_start_race_a(&fzsync_pair);
+
+		/* This is the race window for thread A */
+
+                tst_fzsync_end_race_a(&fzsync_pair);
+	}
+}
+
+static struct tst_test test = {
+	.test_all = thread_a,
+	.setup = setup,
+	.cleanup = cleanup,
+};
+--------------------------------------------------------------------------------
+
+Above is a minimal template for a test using fuzzy-sync. In a simple case, you
+just need to put the bits you want to race inbetween 'start_race' and
+'end_race'. Meanwhile, any setup you need to do per-iteration goes outside the
+windows.
+
+Fuzzy sync synchronises 'run_a' and 'run_b', which act as barriers, so that
+neither thread can progress until the other has caught up with it. There is
+also the 'pair_wait' function which can be used to add barriers in other
+locations. Of course 'start/end_race_a/b' are also a barriers.
+
+The library decides how long the test should run for based on the timeout
+specified by the user plus some other heuristics.
+
+For full documentation see the comments in 'include/tst_fuzzy_sync.h'.
+
 2.3 Writing a testcase in shell
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
