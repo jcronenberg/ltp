@@ -1,21 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-/**********************************************************
+/* 
+ * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
  *
- *    TEST IDENTIFIER	: ptrace01
+ * Author:	Saji Kumar.V.R <saji.kumar@wipro.com>
  *
- *    EXECUTED BY	: anyone
+ * Ported to new library:
+ * 10/2019	Jorik Cronenberg <jcronenberg@suse.de>
  *
- *    TEST TITLE	: functionality test for ptrace(2)
- *
- *    TEST CASE TOTAL	: 2
- *
- *    AUTHOR		: Saji Kumar.V.R <saji.kumar@wipro.com>
- *
- *    SIGNALS
- * 	Uses SIGUSR1 to pause before test if option set.
- * 	(See the parse_opts(3) man page).
- *
- *    DESCRIPTION
+ * DESCRIPTION
  *	This test case tests the functionality of ptrace() for
  *	PTRACE_TRACEME & PTRACE_KILL requests.
  *	Here, we fork a child & the child does ptrace(PTRACE_TRACEME, ...).
@@ -29,57 +21,14 @@
  * 		In both cases, child should stop & notify parent on reception
  * 		of SIGUSR2
  *
- * 	Setup:
- * 	  Setup signal handling.
- *	  Pause for SIGUSR1 if option specified.
- *
- * 	Test:
- *	 Loop if the proper options are given.
- *	 setup signal handler for SIGUSR2 signal
- *	 fork a child
- *
- *	 CHILD:
- *		setup signal handler for SIGUSR2 signal
- *		call ptrace() with PTRACE_TRACEME request
- *		send SIGUSR2 signal to self
- *	 PARENT:
- *		wait() for child.
- *		if parent is notified when child gets a signal through wait(),
- *		then
- *			do  ptrace(PTRACE_KILL, ..) on child
- * 			wait() for child to finish,
- * 			if child exited abnormaly,
- *				TEST passed
- * 			else
- * 				TEST failed
- *		else
- *			TEST failed
- *
- * 	Cleanup:
- * 	  Print errno log and/or timing stats if options given
- *
- * USAGE:  <for command-line>
- *  ptrace01 [-c n] [-e] [-i n] [-I x] [-P x] [-t] [-h] [-f] [-p]
- *			where,  -c n : Run n copies concurrently.
- *				-e   : Turn on errno logging.
- *				-h   : Show help screen
- *				-f   : Turn off functional testing
- *				-i n : Execute test n times.
- *				-I x : Execute test for x seconds.
- *				-p   : Pause for SIGUSR1 before starting
- *				-P x : Pause for x seconds between iterations.
- *				-t   : Turn on syscall timing.
- *
- ****************************************************************/
+ */
 
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
 #include <sys/wait.h>
-
 #include <config.h>
 #include "ptrace.h"
-
 #include "tst_test.h"
 
 static int got_signal;
