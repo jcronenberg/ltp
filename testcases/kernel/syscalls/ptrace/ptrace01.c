@@ -33,20 +33,18 @@
 
 static volatile int got_signal;
 
-void child_handler(void)
+static void child_handler(void)
 {
-	if ((kill(getppid(), SIGUSR2)) == -1) {
-		tst_res(TWARN, "kill() failed in child_handler()");
-		exit(1);
-	}
+	SAFE_KILL(getppid(), SIGUSR2);
+	tst_res(TINFO, "child_handler ran"); //delete
 }
 
-void parent_handler(void)
+static void parent_handler(void)
 {
 	got_signal = 1;
 }
 
-void do_child(unsigned int i)
+static void do_child(unsigned int i)
 {
 	struct sigaction child_act;
 
@@ -58,19 +56,14 @@ void do_child(unsigned int i)
 	child_act.sa_flags = SA_RESTART;
 	sigemptyset(&child_act.sa_mask);
 
-	if ((sigaction(SIGUSR2, &child_act, NULL)) == -1) {
-		tst_res(TWARN, "sigaction() failed in child");
-		exit(1);
-	}
+	SAFE_SIGACTION(SIGUSR2, &child_act, NULL);
 
 	if ((ptrace(PTRACE_TRACEME, 0, 0, 0)) == -1) {
 		tst_res(TWARN, "ptrace() failed in child");
 		exit(1);
 	}
-	if ((kill(getpid(), SIGUSR2)) == -1) {
-		tst_res(TWARN, "kill() failed in child");
-		exit(1);
-	}
+	SAFE_KILL(getpid(), SIGUSR2);
+	tst_res(TINFO, "do_child ran"); //delete
 	exit(1);
 }
 
@@ -79,6 +72,8 @@ static void run(unsigned int i)
 	pid_t child_pid;
 	int status;
 	struct sigaction parent_act;
+
+	int tmp;
 
 	got_signal = 0;
 
@@ -89,22 +84,25 @@ static void run(unsigned int i)
 		parent_act.sa_flags = SA_RESTART;
 		sigemptyset(&parent_act.sa_mask);
 
-		if ((sigaction(SIGUSR2, &parent_act, NULL)) == -1)
-			tst_res(TWARN, "sigaction() failed in parent");
+		SAFE_SIGACTION(SIGUSR2, &parent_act, NULL);
 	}
 
 	child_pid = SAFE_FORK();
+
+	tst_res(TINFO, "child_pid: %i", child_pid); //delete
 
 	if (child_pid != 0) {
 
 		SAFE_WAITPID(child_pid, &status, 0);
 
-		if (((WIFEXITED(status)) &&
-		     (WEXITSTATUS(status))) ||
-		    (got_signal == 1)) {
+		if (((WIFEXITED(status))
+			&& (WEXITSTATUS(status)))
+			 || (got_signal == 1)) {
 			tst_res(TFAIL, "Test Failed");
 		} else {
-			if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1) {
+			tmp = ptrace(PTRACE_KILL, child_pid, 0, 0);
+			tst_res(TINFO, "Signal: %i", tmp); //delete note for tomorrow investigate tst_strstatus()
+			if (/*(ptrace(PTRACE_KILL, child_pid, 0, 0))*/tmp == -1) {
 				tst_res(TFAIL,
 					"Test Failed: Parent was not able to kill child");
 			}
@@ -115,7 +113,7 @@ static void run(unsigned int i)
 		if (WIFEXITED(status))
 			tst_res(TFAIL, "Test failed");
 		else
-			tst_res(TPASS, "Test Passed");
+			tst_res(TPASS, "Test passed");
 
 	} else
 		do_child(i);
