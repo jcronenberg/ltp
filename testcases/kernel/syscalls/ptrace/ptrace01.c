@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/* 
+// SPDX-License-Identifier: GPL-2.0
+/*
  * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
  *
  * Author:	Saji Kumar.V.R <saji.kumar@wipro.com>
@@ -16,10 +16,10 @@
  *	to kill the child. Again parent wait() for child to finish.
  *	If child finished abnormally, test passes.
  *		We test two cases
- * 			1) By telling child to ignore SIGUSR2 signal
- * 			2) By installing a signal handler for child for SIGUSR2
- * 		In both cases, child should stop & notify parent on reception
- * 		of SIGUSR2
+ *			1) By telling child to ignore SIGUSR2 signal
+ *			2) By installing a signal handler for child for SIGUSR2
+ *		In both cases, child should stop & notify parent on reception
+ *		of SIGUSR2
  *
  */
 
@@ -31,7 +31,7 @@
 #include "ptrace.h"
 #include "tst_test.h"
 
-static int got_signal;
+static volatile int got_signal;
 
 void child_handler(void)
 {
@@ -76,26 +76,21 @@ void do_child(unsigned int i)
 
 static void run(unsigned int i)
 {
-
 	pid_t child_pid;
 	int status;
 	struct sigaction parent_act;
 
-#ifdef UCLINUX
-	maybe_run_child(&do_child, "d", &i);
-#endif
-
 	got_signal = 0;
+
+	tst_res(TINFO, "%i", i);
 
 	if (i == 1) {
 		parent_act.sa_handler = parent_handler;
 		parent_act.sa_flags = SA_RESTART;
 		sigemptyset(&parent_act.sa_mask);
 
-		if ((sigaction(SIGUSR2, &parent_act, NULL))
-		    == -1) {
+		if ((sigaction(SIGUSR2, &parent_act, NULL)) == -1)
 			tst_res(TWARN, "sigaction() failed in parent");
-		}
 	}
 
 	child_pid = SAFE_FORK();
@@ -109,10 +104,9 @@ static void run(unsigned int i)
 		    (got_signal == 1)) {
 			tst_res(TFAIL, "Test Failed");
 		} else {
-			if ((ptrace(PTRACE_KILL, child_pid,
-				    0, 0)) == -1) {
+			if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1) {
 				tst_res(TFAIL,
-						"Test Failed: Parent was not able to kill child");
+					"Test Failed: Parent was not able to kill child");
 			}
 		}
 
