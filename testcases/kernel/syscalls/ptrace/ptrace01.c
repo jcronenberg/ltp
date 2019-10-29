@@ -36,7 +36,6 @@ static volatile int got_signal;
 static void child_handler(void)
 {
 	SAFE_KILL(getppid(), SIGUSR2);
-	tst_res(TINFO, "child_handler ran"); //delete
 }
 
 static void parent_handler(void)
@@ -63,7 +62,6 @@ static void do_child(unsigned int i)
 		exit(1);
 	}
 	SAFE_KILL(getpid(), SIGUSR2);
-	tst_res(TINFO, "do_child ran"); //delete
 	exit(1);
 }
 
@@ -106,9 +104,9 @@ static void run(unsigned int i)
 
 		if (WTERMSIG(status) == 9)
 			tst_res(TPASS, "Child %s", tst_strstatus(status));
-		else {
+		else
 			tst_res(TFAIL, "Child %s", tst_strstatus(status));
-		}
+
 	} else
 		do_child(i);
 }
