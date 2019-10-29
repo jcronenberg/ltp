@@ -73,8 +73,6 @@ static void run(unsigned int i)
 	int status;
 	struct sigaction parent_act;
 
-	int tmp;
-
 	got_signal = 0;
 
 	tst_res(TINFO, "%i", i);
@@ -89,32 +87,28 @@ static void run(unsigned int i)
 
 	child_pid = SAFE_FORK();
 
-	tst_res(TINFO, "child_pid: %i", child_pid); //delete
-
 	if (child_pid != 0) {
 
 		SAFE_WAITPID(child_pid, &status, 0);
 
 		if (((WIFEXITED(status))
 			&& (WEXITSTATUS(status)))
-			 || (got_signal == 1)) {
+				|| (got_signal == 1)) {
 			tst_res(TFAIL, "Test Failed");
 		} else {
-			tmp = ptrace(PTRACE_KILL, child_pid, 0, 0);
-			tst_res(TINFO, "Signal: %i", tmp); //delete note for tomorrow investigate tst_strstatus()
-			if (/*(ptrace(PTRACE_KILL, child_pid, 0, 0))*/tmp == -1) {
-				tst_res(TFAIL,
-					"Test Failed: Parent was not able to kill child");
+			if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1) {
+				tst_res(TFAIL | TERRNO,
+					"Parent was not able to kill child");
 			}
 		}
 
 		SAFE_WAITPID(child_pid, &status, 0);
 
-		if (WIFEXITED(status))
-			tst_res(TFAIL, "Test failed");
-		else
-			tst_res(TPASS, "Test passed");
-
+		if (WTERMSIG(status) == 9)
+			tst_res(TPASS, "Child %s", tst_strstatus(status));
+		else {
+			tst_res(TFAIL, "Child %s", tst_strstatus(status));
+		}
 	} else
 		do_child(i);
 }
