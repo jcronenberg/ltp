@@ -91,7 +91,7 @@ static void run(unsigned int i)
 
 		if (((WIFEXITED(status))
 			&& (WEXITSTATUS(status)))
-				|| (got_signal == 1)) {
+			 || (got_signal == 1)) {
 			tst_res(TFAIL, "Test Failed");
 		} else {
 			if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1) {
