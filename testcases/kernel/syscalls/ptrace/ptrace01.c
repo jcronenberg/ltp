@@ -73,8 +73,6 @@ static void run(unsigned int i)
 
 	got_signal = 0;
 
-	tst_res(TINFO, "%i", i);
-
 	if (i == 1) {
 		parent_act.sa_handler = parent_handler;
 		parent_act.sa_flags = SA_RESTART;
@@ -85,30 +83,29 @@ static void run(unsigned int i)
 
 	child_pid = SAFE_FORK();
 
-	if (child_pid != 0) {
-
-		SAFE_WAITPID(child_pid, &status, 0);
-
-		if (((WIFEXITED(status))
-			&& (WEXITSTATUS(status)))
-			 || (got_signal == 1)) {
-			tst_res(TFAIL, "Test Failed");
-		} else {
-			if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1) {
-				tst_res(TFAIL | TERRNO,
-					"Parent was not able to kill child");
-			}
-		}
-
-		SAFE_WAITPID(child_pid, &status, 0);
-
-		if (WTERMSIG(status) == 9)
-			tst_res(TPASS, "Child %s", tst_strstatus(status));
-		else
-			tst_res(TFAIL, "Child %s", tst_strstatus(status));
-
-	} else
+	if (!child_pid)
 		do_child(i);
+
+	SAFE_WAITPID(child_pid, &status, 0);
+
+	if (((WIFEXITED(status))
+		&& (WEXITSTATUS(status)))
+		 || (got_signal == 1)) {
+		tst_res(TFAIL, "Test Failed");
+	} else {
+		if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1) {
+			tst_res(TFAIL | TERRNO,
+				"ptrace(PTRACE_KILL, %i, 0, 0) failed", child_pid);
+		}
+	}
+
+	SAFE_WAITPID(child_pid, &status, 0);
+
+	if (WTERMSIG(status) == 9)
+		tst_res(TPASS, "Child %s as expected", tst_strstatus(status));
+	else
+		tst_res(TFAIL, "Child %s unexpectedly", tst_strstatus(status));
+
 }
 
 static struct tst_test test = {
