@@ -37,21 +37,10 @@
 #include <config.h>
 #include "ptrace.h"
 
-#include "test.h"
+#include "tst_test.h"
 #include "lapi/signal.h"
 
-char *TCID = "ptrace05";
-int TST_TOTAL = 0;
-
-int usage(const char *);
-
-int usage(const char *argv0)
-{
-	fprintf(stderr, "usage: %s [start-signum] [end-signum]\n", argv0);
-	return 1;
-}
-
-int main(int argc, char **argv)
+void run(unsigned int i)
 {
 
 	int end_signum = -1;
@@ -60,8 +49,6 @@ int main(int argc, char **argv)
 	int status;
 
 	pid_t child;
-
-	tst_parse_opts(argc, argv, NULL, NULL);
 
 	if (start_signum == -1) {
 		start_signum = 0;
@@ -75,16 +62,13 @@ int main(int argc, char **argv)
 		if (signum >= __SIGRTMIN && signum < SIGRTMIN)
 			continue;
 
-		switch (child = fork()) {
-		case -1:
-			tst_brkm(TBROK | TERRNO, NULL, "fork() failed");
-		case 0:
-
+		child = SAFE_FORK();
+		if (child == 0) {
 			if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) != -1) {
-				tst_resm(TINFO, "[child] Sending kill(.., %d)",
+				tst_res(TINFO, "[child] Sending kill(.., %d)",
 					 signum);
 				if (kill(getpid(), signum) < 0) {
-					tst_resm(TINFO | TERRNO,
+					tst_res(TINFO | TERRNO,
 						 "[child] kill(.., %d) failed.",
 						 signum);
 				}
@@ -95,7 +79,7 @@ int main(int argc, char **argv)
 				 * properly, but it'll show up as a failure
 				 * nonetheless.
 				 */
-				tst_resm(TFAIL | TERRNO,
+				tst_res(TFAIL | TERRNO,
 					 "Failed to ptrace(PTRACE_TRACEME, ...) "
 					 "properly");
 
@@ -103,20 +87,18 @@ int main(int argc, char **argv)
 			/* Shouldn't get here if signum == 0. */
 			exit((signum == 0 ? 0 : 2));
 			break;
-
-		default:
-
+		} else {
 			waitpid(child, &status, 0);
 
 			switch (signum) {
 			case 0:
 				if (WIFEXITED(status)
 				    && WEXITSTATUS(status) == 0) {
-					tst_resm(TPASS,
+					tst_res(TPASS,
 						 "kill(.., 0) exited "
 						 "with 0, as expected.");
 				} else {
-					tst_resm(TFAIL,
+					tst_res(TFAIL,
 						 "kill(.., 0) didn't exit "
 						 "with 0.");
 				}
@@ -125,20 +107,20 @@ int main(int argc, char **argv)
 				if (WIFSIGNALED(status)) {
 					/* SIGKILL must be uncatchable. */
 					if (WTERMSIG(status) == SIGKILL) {
-						tst_resm(TPASS,
+						tst_res(TPASS,
 							 "Killed with SIGKILL, "
 							 "as expected.");
 					} else {
-						tst_resm(TPASS,
+						tst_res(TPASS,
 							 "Didn't die with "
 							 "SIGKILL (?!) ");
 					}
 				} else if (WIFEXITED(status)) {
-					tst_resm(TFAIL,
+					tst_res(TFAIL,
 						 "Exited unexpectedly instead "
 						 "of dying with SIGKILL.");
 				} else if (WIFSTOPPED(status)) {
-					tst_resm(TFAIL,
+					tst_res(TFAIL,
 						 "Stopped instead of dying "
 						 "with SIGKILL.");
 				}
@@ -146,18 +128,18 @@ int main(int argc, char **argv)
 				/* All other processes should be stopped. */
 			default:
 				if (WIFSTOPPED(status)) {
-					tst_resm(TPASS, "Stopped as expected");
+					tst_res(TPASS, "Stopped as expected");
 				} else {
-					tst_resm(TFAIL, "Didn't stop as "
+					tst_res(TFAIL, "Didn't stop as "
 						 "expected.");
 					if (kill(child, 0)) {
-						tst_resm(TINFO,
+						tst_res(TINFO,
 							 "Is still alive!?");
 					} else if (WIFEXITED(status)) {
-						tst_resm(TINFO,
+						tst_res(TINFO,
 							 "Exited normally");
 					} else if (WIFSIGNALED(status)) {
-						tst_resm(TINFO,
+						tst_res(TINFO,
 							 "Was signaled with "
 							 "signum=%d",
 							 WTERMSIG(status));
@@ -168,13 +150,16 @@ int main(int argc, char **argv)
 				break;
 
 			}
-
 		}
 		/* Make sure the child dies a quick and painless death ... */
 		kill(child, 9);
 
 	}
 
-	tst_exit();
-
 }
+
+static struct tst_test test = {
+	.test = run,
+	.tcnt = 1,
+	.forks_child = 1,
+};
