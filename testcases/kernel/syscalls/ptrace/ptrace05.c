@@ -41,7 +41,7 @@
 #include "tst_test.h"
 #include "lapi/signal.h"
 
-void run(unsigned int i)
+void run(void)
 {
 
 	int end_signum = -1;
@@ -49,7 +49,7 @@ void run(unsigned int i)
 	int start_signum = -1;
 	int status;
 
-	pid_t child;
+	pid_t child_pid;
 
 	if (start_signum == -1) {
 		start_signum = 0;
@@ -63,14 +63,16 @@ void run(unsigned int i)
 		if (signum >= __SIGRTMIN && signum < SIGRTMIN)
 			continue;
 
-		child = SAFE_FORK();
-		if (child == 0) {
+			tst_res(TINFO, "signum: %i, start_signum: %i, end_signum: %i",
+				signum, start_signum, end_signum);
+		child_pid = SAFE_FORK();
+		if (child_pid == 0) {
 			if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) != -1) {
-				tst_res(TINFO, "[child] Sending kill(.., %d)",
+				tst_res(TINFO, "[child_pid] Sending kill(.., %d)",
 					 signum);
 				if (kill(getpid(), signum) < 0) {
 					tst_res(TINFO | TERRNO,
-						 "[child] kill(.., %d) failed.",
+						 "[child_pid] kill(.., %d) failed.",
 						 signum);
 				}
 			} else {
@@ -87,12 +89,10 @@ void run(unsigned int i)
 			}
 			/* Shouldn't get here if signum == 0. */
 			exit((signum == 0 ? 0 : 2));
-			break;
 		} else {
-			waitpid(child, &status, 0);
+			SAFE_WAITPID(child_pid, &status, 0);
 
-			switch (signum) {
-			case 0:
+			if (signum == 0) {
 				if (WIFEXITED(status)
 				    && WEXITSTATUS(status) == 0) {
 					tst_res(TPASS,
@@ -103,8 +103,7 @@ void run(unsigned int i)
 						 "kill(.., 0) didn't exit "
 						 "with 0.");
 				}
-				break;
-			case SIGKILL:
+			} else if (signum == SIGKILL) {
 				if (WIFSIGNALED(status)) {
 					/* SIGKILL must be uncatchable. */
 					if (WTERMSIG(status) == SIGKILL) {
@@ -125,15 +124,14 @@ void run(unsigned int i)
 						 "Stopped instead of dying "
 						 "with SIGKILL.");
 				}
-				break;
 				/* All other processes should be stopped. */
-			default:
+			} else {
 				if (WIFSTOPPED(status)) {
 					tst_res(TPASS, "Stopped as expected");
 				} else {
 					tst_res(TFAIL, "Didn't stop as "
 						 "expected.");
-					if (kill(child, 0)) {
+					if (kill(child_pid, 0)) {
 						tst_res(TINFO,
 							 "Is still alive!?");
 					} else if (WIFEXITED(status)) {
@@ -148,12 +146,11 @@ void run(unsigned int i)
 
 				}
 
-				break;
 
 			}
 		}
 		/* Make sure the child dies a quick and painless death ... */
-		kill(child, 9);
+		kill(child_pid, 9);
 
 	}
 
@@ -162,5 +159,5 @@ void run(unsigned int i)
 static struct tst_test test = {
 	.test = run,
 	.tcnt = 1,
-	.forks_child = 1,
+	.forks_child = 0,
 };
