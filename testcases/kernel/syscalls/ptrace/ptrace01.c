@@ -3,10 +3,8 @@
  * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
  * Copyright (c) 2019 Jorik Cronenberg <jcronenberg@suse.de>
  *
- * Author:
- * 	Saji Kumar.V.R <saji.kumar@wipro.com>
- * Ported to new library:
- * 	Jorik Cronenberg <jcronenberg@suse.de>
+ * Author: Saji Kumar.V.R <saji.kumar@wipro.com>
+ * Ported to new library: Jorik Cronenberg <jcronenberg@suse.de>
  *
  * Test the functionality of ptrace() for PTRACE_TRACEME & PTRACE_KILL requests.
  * Forked child does ptrace(PTRACE_TRACEME, ...).

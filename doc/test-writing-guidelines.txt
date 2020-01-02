@@ -493,7 +493,10 @@ this needed.
 
 If '.needs_tmpdir' is set to '1' in the 'struct tst_test' unique test
 temporary is created and it's set as the test working directory. Tests *MUST
-NOT* create temporary files outside that directory.
+NOT* create temporary files outside that directory. The flag is not needed to
+be set when use these flags: '.all_filesystems', '.format_device', '.mntpoint',
+'.mount_device' '.needs_checkpoints', '.needs_device', '.resource_file'
+(these flags imply creating temporary directory).
 
 IMPORTANT: Close all file descriptors (that point to files in test temporary
            directory, even the unlinked ones) either in the 'test()' function
@@ -2109,8 +2112,8 @@ tst_run
 '$TST_TEST_DATA' can be used with '$TST_CNT'. If '$TST_TEST_DATA_IFS' not specified,
 space as default value is used. Of course, it's possible to use separate functions.
 
-2.3.2 Library variables
-^^^^^^^^^^^^^^^^^^^^^^^
+2.3.2 Library environment variables for shell
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similarily to the C library various checks and preparations can be requested
 simply by setting right '$TST_NEEDS_FOO'.
@@ -2122,10 +2125,15 @@ simply by setting right '$TST_NEEDS_FOO'.
 | 'TST_NEEDS_TMPDIR' | Create test temporary directory and cd into it.
 | 'TST_NEEDS_DEVICE' | Prepare test temporary device, the path to testing
                        device is stored in '$TST_DEVICE' variable.
+                       The option implies 'TST_NEEDS_TMPDIR'.
 | 'TST_NEEDS_CMDS'   | String with command names that has to be present for
                        the test (see below).
 | 'TST_NEEDS_MODULE' | Test module name needed for the test (see below).
 | 'TST_NEEDS_DRIVERS'| Checks kernel drivers support for the test.
+| 'TST_TIMEOUT'      | Maximum timeout set for the test in sec. Must be int >= 1,
+                       or -1 (special value to disable timeout), default is 300.
+                       Variable is meant be set in tests, not by user.
+                       It's equivalent of `tst_test.timeout` in C.
 |=============================================================================
 
 NOTE: Network tests (see testcases/network/README.md) use additional variables
@@ -2150,7 +2158,7 @@ TST_NEEDS_CMDS="modinfo modprobe"
 Setting '$TST_NEEDS_CMDS' to a string listing required commands will check for
 existence each of them and exits the test with 'TCONF' on first missing.
 
-Alternatively the 'tst_test_cmds()' function can be used to do the same on
+Alternatively the 'tst_require_cmds()' function can be used to do the same on
 runtime, since sometimes we need to the check at runtime too.
 
 'tst_check_cmds()' can be used for requirements just for a particular test
@@ -2174,7 +2182,7 @@ Locating kernel modules
 +++++++++++++++++++++++
 
 The LTP build system can build kernel modules as well, setting
-'$TST_NEEDS_MODULE' to module name will cause to library to look for the
+'$TST_NEEDS_MODULE' to module name will cause the library to look for the
 module in a few possible paths.
 
 If module was found the path to it will be stored into '$TST_MODPATH'
@@ -2309,7 +2317,8 @@ Retry a function in limited time
 Sometimes LTP test needs retrying a function for many times to get success.
 This achievement makes that possible via keeping it retrying if the return
 value of the function is NOT as we expected. After exceeding a limited time,
-test will break from the retries immediately.
+test will break from the retries immediately. The time limit is multiplied
+with LTP_TIMEOUT_MUL.
 
 [source,c]
 -------------------------------------------------------------------------------
@@ -2336,6 +2345,16 @@ Checking for integers
 -------------------------------------------------------------------------------
 # returns zero if passed an integer parameter, non-zero otherwise
 tst_is_int "$FOO"
+-------------------------------------------------------------------------------
+
+Checking for integers and floating point numbers
+++++++++++++++++++++++++++++++++++++++++++++++++
+
+[source,sh]
+-------------------------------------------------------------------------------
+# returns zero if passed an integer or floating point number parameter,
+# non-zero otherwise
+tst_is_num "$FOO"
 -------------------------------------------------------------------------------
 
 Obtaining random numbers
@@ -2428,8 +2447,8 @@ Note the '>' is escaped with '\', this causes that the '>' and filename are
 passed to the 'ROD' function as parameters and the 'ROD' function contains
 code to split '$@' on '>' and redirects the output to the file.
 
-EXPECT_PASS and EXPECT_FAIL
-+++++++++++++++++++++++++++
+EXPECT_PASS{,_BRK} and EXPECT_FAIL{,_BRK}
++++++++++++++++++++++++++++++++++++++++++
 
 [source,sh]
 -------------------------------------------------------------------------------
@@ -2442,6 +2461,17 @@ and 'tst_resm TFAIL' otherwise. 'EXPECT_FAIL' does vice versa.
 
 Output redirection rules are the same as for the 'ROD' function. In addition
 to that, 'EXPECT_FAIL' always redirects the command's stderr to '/dev/null'.
+
+There are also 'EXPECT_PASS_BRK' and 'EXPECT_FAIL_BRK', which works the same way
+except breaking a test when unexpected action happen.
+
+It's possible to detect whether expected value happened:
+[source,sh]
+-------------------------------------------------------------------------------
+if ! EXPECT_PASS command arg1 2\> /dev/null; then
+	continue
+fi
+-------------------------------------------------------------------------------
 
 tst_kvcmp
 +++++++++
@@ -2575,7 +2605,7 @@ tst_exit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The shell library provides an implementation of the checkpoint interface
-compatible with the C version. All TST_CHECKPOINT_* functions are available.
+compatible with the C version. All 'TST_CHECKPOINT_*' functions are available.
 
 In order to initialize checkpoints '$TST_NEEDS_CHECKPOINTS' must be set to '1'
 before the inclusion of 'test.sh':
@@ -2590,7 +2620,7 @@ TST_NEEDS_CHECKPOINTS=1
 
 Since both the implementations are compatible, it's also possible to start
 a child binary process from a shell test and synchronize with it. This process
-must have checkpoints initialized by calling tst_reinit()'.
+must have checkpoints initialized by calling 'tst_reinit()'.
 
 3. Common problems
 ------------------
@@ -2606,7 +2636,7 @@ with 'open()' or 'creat()' etc, the mode specified as the last parameter *is
 not* the mode the file is created with. The mode depends on current 'umask()'
 settings which may clear some of the bits. If your test depends on specific
 file permissions you need either to change umask to 0 or 'chmod()' the file
-afterwards or use SAFE_TOUCH() that does the 'chmod()' for you.
+afterwards or use 'SAFE_TOUCH()' that does the 'chmod()' for you.
 
 3.2 access()
 ~~~~~~~~~~~

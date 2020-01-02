@@ -75,7 +75,6 @@ static const char *const resource_files[] = {
 
 static struct tst_test test = {
 	.needs_root = 1,
-	.needs_tmpdir = 1,
 	.mount_device = 1,
 	.needs_overlay = 1,
 	.mntpoint = mntpoint,
@@ -84,4 +83,9 @@ static struct tst_test test = {
 	.setup = setup,
 	.test_all = verify_execveat,
 	.resource_files = resource_files,
+	.tags = (const struct tst_tag[]) {
+		{"linux-git", "8db6c34f1dbc"},
+		{"linux-git", "355139a8dba4"},
+		{}
+	}
 };

@@ -12,7 +12,6 @@ TST_OPTS="f:"
 TST_USAGE=usage
 TST_PARSE_ARGS=parse_args
 TST_NEEDS_ROOT=1
-TST_NEEDS_TMPDIR=1
 TST_NEEDS_DEVICE=1
 TST_NEEDS_CMDS="blkid df"
 . tst_test.sh
@@ -37,7 +36,7 @@ parse_args()
 setup()
 {
 	if [ -n "$TST_FS_TYPE" ]; then
-		tst_test_cmds mkfs.${TST_FS_TYPE}
+		tst_require_cmds mkfs.${TST_FS_TYPE}
 	fi
 
 	ROD_SILENT mkdir -p mntpoint

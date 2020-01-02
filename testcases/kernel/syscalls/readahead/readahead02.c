@@ -401,7 +401,6 @@ static void cleanup(void)
 
 static struct tst_test test = {
 	.needs_root = 1,
-	.needs_tmpdir = 1,
 	.mount_device = 1,
 	.mntpoint = mntpoint,
 	.setup = setup,
@@ -409,4 +408,9 @@ static struct tst_test test = {
 	.options = options,
 	.test = test_readahead,
 	.tcnt = ARRAY_SIZE(tcases),
+	.tags = (const struct tst_tag[]) {
+		{"linux-git", "b833a3660394"},
+		{"linux-git", "5b910bd615ba"},
+		{}
+	}
 };

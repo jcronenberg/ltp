@@ -252,10 +252,14 @@ static struct tst_test test = {
 	.tcnt = ARRAY_SIZE(tcases),
 	.setup = setup,
 	.cleanup = cleanup,
-	.needs_tmpdir = 1,
 	.needs_root = 1,
 	.mount_device = 1,
 	.mntpoint = mntpoint,
+	.tags = (const struct tst_tag[]) {
+		{"linux-git", "8edc6e1688fc"},
+		{"linux-git", "d989903058a8"},
+		{}
+	}
 };
 
 #else

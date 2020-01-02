@@ -9,7 +9,6 @@ TST_CNT=10
 TST_SETUP=setup
 TST_TESTFUNC=do_test
 TST_NEEDS_ROOT=1
-TST_NEEDS_TMPDIR=1
 TST_NEEDS_DEVICE=1
 TST_NEEDS_CMDS="uuidgen blkid blockdev mkswap"
 . tst_test.sh
@@ -128,6 +127,8 @@ mkswap_test()
 		cat temp
 		return
 	fi
+
+	udevadm trigger --name-match=$TST_DEVICE
 
 	if [ -n "$device" ]; then
 		mkswap_verify "$mkswap_op" "$op_arg" "$device" "$size" "$dev_file"

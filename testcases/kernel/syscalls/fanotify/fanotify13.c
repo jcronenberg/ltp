@@ -275,8 +275,8 @@ static void do_test(unsigned int number)
 			"and name_to_handle_at(2)",
 			metadata->mask,
 			getpid(),
-			event_fid->fsid.val[0],
-			event_fid->fsid.val[1],
+			FSID_VAL_MEMBER(event_fid->fsid, 0),
+			FSID_VAL_MEMBER(event_fid->fsid, 1),
 			*(unsigned long *) event_file_handle->f_handle);
 	}
 out:
@@ -324,7 +324,11 @@ static struct tst_test test = {
 	.needs_tmpdir = 1,
 	.mount_device = 1,
 	.mntpoint = MOUNT_PATH,
-	.all_filesystems = 1
+	.all_filesystems = 1,
+	.tags = (const struct tst_tag[]) {
+		{"linux-git", "c285a2f01d69"},
+		{}
+	}
 };
 
 #else

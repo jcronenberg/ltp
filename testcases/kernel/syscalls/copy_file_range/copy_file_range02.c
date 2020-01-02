@@ -25,9 +25,10 @@
  * 9) Try to copy contents to a blkdev ->EINVAL
  * 10) Try to copy contents to a chardev ->EINVAL
  * 11) Try to copy contents to a FIFO ->EINVAL
- * 12) Try to copy contents to a file with length beyond
+ * 12) Try to copy contenst to a PIPE ->EINVAL
+ * 13) Try to copy contents to a file with length beyond
  *     16EiB wraps around 0 -> EOVERFLOW
- * 13) Try to copy contents to a file with target file range
+ * 14) Try to copy contents to a file with target file range
  *     beyond maximum supported file size ->EFBIG
  */
 
@@ -48,11 +49,13 @@ static int fd_dup;
 static int fd_blkdev;
 static int fd_chrdev;
 static int fd_fifo;
+static int fd_pipe[2];
 static int fd_copy;
 static int need_unlink;
 
 static int chattr_i_nsup;
 static int swap_nsup;
+static int cross_sup;
 static int loop_devn;
 
 static struct tcase {
@@ -61,20 +64,22 @@ static struct tcase {
 	int	exp_err;
 	loff_t     len;
 	const char *tname;
+	int     new_error;
 } tcases[] = {
-	{&fd_rdonly,	0,	EBADF,		CONTSIZE,	"readonly file"},
-	{&fd_dir,	0,	EISDIR,		CONTSIZE,	"directory"},
-	{&fd_append,	0,	EBADF,		CONTSIZE,	"append to file"},
-	{&fd_closed,	0,	EBADF,		CONTSIZE,	"closed file descriptor"},
-	{&fd_dest,	-1,	EINVAL,		CONTSIZE,	"invalid flags"},
-	{&fd_immutable,	0,	EPERM,		CONTSIZE,	"immutable file"},
-	{&fd_swapfile,	0,	ETXTBSY,	CONTSIZE,	"swap file"},
-	{&fd_dup,	0,	EINVAL,		CONTSIZE/2,	"overlaping range"},
-	{&fd_blkdev,	0,	EINVAL,		CONTSIZE,	"block device"},
-	{&fd_chrdev,	0,	EINVAL,		CONTSIZE,	"char device"},
-	{&fd_fifo,	0,	EINVAL,		CONTSIZE,	"fifo"},
-	{&fd_copy,	0,	EOVERFLOW,	ULLONG_MAX,	"max length lenght"},
-	{&fd_copy,	0,	EFBIG,		MIN_OFF,	"max file size"},
+	{&fd_rdonly,	0,	EBADF,		CONTSIZE,	"readonly file",	0},
+	{&fd_dir,	0,	EISDIR,		CONTSIZE,	"directory",	0},
+	{&fd_append,	0,	EBADF,		CONTSIZE,	"append to file",	0},
+	{&fd_closed,	0,	EBADF,		CONTSIZE,	"closed file descriptor",	0},
+	{&fd_dest,	-1,	EINVAL,		CONTSIZE,	"invalid flags",	0},
+	{&fd_immutable,	0,	EPERM,		CONTSIZE,	"immutable file",	1},
+	{&fd_swapfile,	0,	ETXTBSY,	CONTSIZE,	"swap file",	1},
+	{&fd_dup,	0,	EINVAL,		CONTSIZE/2,	"overlaping range",	1},
+	{&fd_blkdev,	0,	EINVAL,		CONTSIZE,	"block device", 	0},
+	{&fd_chrdev,	0,	EINVAL,		CONTSIZE,	"char device",	0},
+	{&fd_fifo,	0,	EINVAL,		CONTSIZE,	"fifo", 	0},
+	{&fd_pipe[0],	0,	EINVAL,		CONTSIZE,	"pipe", 	0},
+	{&fd_copy,	0,	EOVERFLOW,	ULLONG_MAX,	"max length lenght", 	1},
+	{&fd_copy,	0,	EFBIG,		MIN_OFF,	"max file size", 	1},
 };
 
 static int run_command(char *command, char *option, char *file)
@@ -102,6 +107,11 @@ static void verify_copy_file_range(unsigned int n)
 
 	tst_res(TINFO, "Test #%d: %s", n, tc->tname);
 
+	if (tc->new_error && !cross_sup) {
+		tst_res(TCONF,
+			"copy_file_range() doesn't support cross-device, skip it");
+		return;
+	}
 	if (tc->copy_to_fd == &fd_immutable && chattr_i_nsup) {
 		tst_res(TCONF, "filesystem doesn't support chattr +i, skip it");
 		return;
@@ -163,6 +173,11 @@ static void cleanup(void)
 		SAFE_CLOSE(fd_copy);
 	if (need_unlink > 0)
 		SAFE_UNLINK(FILE_FIFO);
+
+	if (fd_pipe[0] > 0) {
+		SAFE_CLOSE(fd_pipe[0]);
+		SAFE_CLOSE(fd_pipe[1]);
+	}
 }
 
 static void setup(void)
@@ -170,9 +185,7 @@ static void setup(void)
 	syscall_info();
 	char dev_path[1024];
 
-	if (!verify_cross_fs_copy_support(FILE_SRC_PATH, FILE_MNTED_PATH))
-		tst_brk(TCONF,
-			"copy_file_range() doesn't support cross-device, skip it");
+	cross_sup = verify_cross_fs_copy_support(FILE_SRC_PATH, FILE_MNTED_PATH);
 
 	if (access(FILE_DIR_PATH, F_OK) == -1)
 		SAFE_MKDIR(FILE_DIR_PATH, 0777);
@@ -200,6 +213,8 @@ static void setup(void)
 
 	fd_chrdev = SAFE_OPEN(FILE_CHRDEV, O_RDWR, 0600);
 	fd_fifo = SAFE_OPEN(FILE_FIFO, O_RDWR, 0600);
+
+	SAFE_PIPE(fd_pipe);
 
 	SAFE_WRITE(1, fd_src, CONTENT, CONTSIZE);
 	close(fd_src);
@@ -233,6 +248,5 @@ static struct tst_test test = {
 	.mount_device = 1,
 	.mntpoint = MNTPOINT,
 	.needs_root = 1,
-	.needs_tmpdir = 1,
 	.test_variants = TEST_VARIANTS,
 };

@@ -92,10 +92,14 @@ void dirtyc0w_test(void)
 }
 
 static struct tst_test test = {
-	.needs_tmpdir = 1,
 	.needs_checkpoints = 1,
 	.forks_child = 1,
 	.needs_root = 1,
 	.setup = setup,
 	.test_all = dirtyc0w_test,
+	.tags = (const struct tst_tag[]) {
+		{"linux-git", "4ceb5db9757a"},
+		{"linux-git", "9be0eaffa3ac"},
+		{}
+	}
 };

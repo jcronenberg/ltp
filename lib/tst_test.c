@@ -31,11 +31,15 @@
 #include "old_device.h"
 #include "old_tmpdir.h"
 
+#define LINUX_GIT_URL "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id="
+#define CVE_DB_URL "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-"
+
 struct tst_test *tst_test;
 
 static const char *tid;
 static int iterations = 1;
 static float duration = -1;
+static float timeout_mul = -1;
 static pid_t main_pid, lib_pid;
 static int mntpoint_mounted;
 static int ovl_mounted;
@@ -414,6 +418,9 @@ static void print_help(void)
 {
 	unsigned int i;
 
+	fprintf(stderr, "Options\n");
+	fprintf(stderr, "-------\n");
+
 	for (i = 0; i < ARRAY_SIZE(options); i++)
 		fprintf(stderr, "%s\n", options[i].help);
 
@@ -422,6 +429,28 @@ static void print_help(void)
 
 	for (i = 0; tst_test->options[i].optstr; i++)
 		fprintf(stderr, "%s\n", tst_test->options[i].help);
+}
+
+static void print_test_tags(void)
+{
+	unsigned int i;
+	const struct tst_tag *tags = tst_test->tags;
+
+	printf("\nTags\n");
+	printf("----\n");
+
+	if (tags) {
+		for (i = 0; tags[i].name; i++) {
+			if (!strcmp(tags[i].name, "CVE"))
+				printf(CVE_DB_URL "%s\n", tags[i].value);
+			else if (!strcmp(tags[i].name, "linux-git"))
+				printf(LINUX_GIT_URL "%s\n", tags[i].value);
+			else
+				printf("%s: %s\n", tags[i].name, tags[i].value);
+		}
+	}
+
+	printf("\n");
 }
 
 static void check_option_collision(void)
@@ -467,6 +496,9 @@ static void parse_topt(unsigned int topts_len, int opt, char *optarg)
 	if (i >= topts_len)
 		tst_brk(TBROK, "Invalid option '%c' (should not happen)", opt);
 
+	if (*toptions[i].arg)
+		tst_res(TWARN, "Option -%c passed multiple times", opt);
+
 	*(toptions[i].arg) = optarg ? optarg : "";
 }
 
@@ -499,6 +531,7 @@ static void parse_opts(int argc, char *argv[])
 		break;
 		case 'h':
 			print_help();
+			print_test_tags();
 			exit(0);
 		case 'i':
 			iterations = atoi(optarg);
@@ -584,26 +617,74 @@ int tst_parse_float(const char *str, float *val, float min, float max)
 	return 0;
 }
 
+static void print_colored(const char *str)
+{
+	if (tst_color_enabled(STDOUT_FILENO))
+		printf("%s%s%s", ANSI_COLOR_YELLOW, str, ANSI_COLOR_RESET);
+	else
+		printf("%s", str);
+}
+
+static void print_failure_hints(void)
+{
+	unsigned int i;
+	const struct tst_tag *tags = tst_test->tags;
+
+	if (!tags)
+		return;
+
+	int hint_printed = 0;
+	for (i = 0; tags[i].name; i++) {
+		if (!strcmp(tags[i].name, "linux-git")) {
+			if (!hint_printed) {
+				hint_printed = 1;
+				printf("\n");
+				print_colored("HINT: ");
+				printf("You _MAY_ be missing kernel fixes, see:\n\n");
+			}
+
+			printf(LINUX_GIT_URL "%s\n", tags[i].value);
+		}
+
+	}
+
+	hint_printed = 0;
+	for (i = 0; tags[i].name; i++) {
+		if (!strcmp(tags[i].name, "CVE")) {
+			if (!hint_printed) {
+				hint_printed = 1;
+				printf("\n");
+				print_colored("HINT: ");
+				printf("You _MAY_ be vunerable to CVE(s), see:\n\n");
+			}
+
+			printf(CVE_DB_URL "%s\n", tags[i].value);
+		}
+	}
+}
+
 static void do_exit(int ret)
 {
 	if (results) {
-		printf("\nSummary:\n");
-		printf("passed   %d\n", results->passed);
-		printf("failed   %d\n", results->failed);
-		printf("skipped  %d\n", results->skipped);
-		printf("warnings %d\n", results->warnings);
-
 		if (results->passed && ret == TCONF)
 			ret = 0;
 
-		if (results->failed)
+		if (results->failed) {
 			ret |= TFAIL;
+			print_failure_hints();
+		}
 
 		if (results->skipped && !results->passed)
 			ret |= TCONF;
 
 		if (results->warnings)
 			ret |= TWARN;
+
+		printf("\nSummary:\n");
+		printf("passed   %d\n", results->passed);
+		printf("failed   %d\n", results->failed);
+		printf("skipped  %d\n", results->skipped);
+		printf("warnings %d\n", results->warnings);
 	}
 
 	do_cleanup();
@@ -1093,25 +1174,43 @@ unsigned int tst_timeout_remaining(void)
 	return 0;
 }
 
+unsigned int tst_multiply_timeout(unsigned int timeout)
+{
+	char *mul;
+	int ret;
+
+	if (timeout_mul == -1) {
+		mul = getenv("LTP_TIMEOUT_MUL");
+		if (mul) {
+			if ((ret = tst_parse_float(mul, &timeout_mul, 1, 10000))) {
+				tst_brk(TBROK, "Failed to parse LTP_TIMEOUT_MUL: %s",
+						tst_strerrno(ret));
+			}
+		} else {
+			timeout_mul = 1;
+		}
+	}
+	if (timeout_mul < 1)
+		tst_brk(TBROK, "LTP_TIMEOUT_MUL must to be int >= 1! (%.2f)",
+				timeout_mul);
+
+	if (timeout < 1)
+		tst_brk(TBROK, "timeout must to be >= 1! (%d)", timeout);
+
+	return timeout * timeout_mul;
+}
+
 void tst_set_timeout(int timeout)
 {
-	char *mul = getenv("LTP_TIMEOUT_MUL");
-
 	if (timeout == -1) {
 		tst_res(TINFO, "Timeout per run is disabled");
 		return;
 	}
 
-	results->timeout = timeout;
+	if (timeout < 1)
+		tst_brk(TBROK, "timeout must to be >= 1! (%d)", timeout);
 
-	if (mul) {
-		float m = atof(mul);
-
-		if (m < 1)
-			tst_brk(TBROK, "Invalid timeout multiplier '%s'", mul);
-
-		results->timeout = results->timeout * m + 0.5;
-	}
+	results->timeout = tst_multiply_timeout(timeout);
 
 	tst_res(TINFO, "Timeout per run is %uh %02um %02us",
 		results->timeout/3600, (results->timeout%3600)/60,

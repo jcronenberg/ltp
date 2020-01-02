@@ -192,8 +192,8 @@ static void do_test(void)
 				"fid=%x.%x.%lx values",
 				metadata->mask,
 				getpid(),
-				event_fid->fsid.val[0],
-				event_fid->fsid.val[1],
+				FSID_VAL_MEMBER(event_fid->fsid, 0),
+				FSID_VAL_MEMBER(event_fid->fsid, 1),
 				*(unsigned long *)
 				event_file_handle->f_handle);
 		}
@@ -233,7 +233,6 @@ static void do_cleanup(void)
 
 static struct tst_test test = {
 	.needs_root = 1,
-	.needs_tmpdir = 1,
 	.mount_device = 1,
 	.mntpoint = MOUNT_POINT,
 	.all_filesystems = 1,
