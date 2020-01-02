@@ -40,12 +40,12 @@ struct test_case_t {
 	{PTRACE_TRACEME, &zero_pid, EPERM},
 };
 
-void setup(void)
+static void setup(void)
 {
 	unused_pid = tst_get_unused_pid();
 }
 
-void run(unsigned int i)
+static void run(unsigned int i)
 {
 	pid_t child_pid;
 	int status;
