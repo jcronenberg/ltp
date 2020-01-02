@@ -28,19 +28,19 @@
 #include "ptrace.h"
 #include "tst_test.h"
 
-static int got_signal;
+static volatile int got_signal;
 
-void child_handler(int sig LTP_ATTRIBUTE_UNUSED)
+static void child_handler(int sig LTP_ATTRIBUTE_UNUSED)
 {
 	SAFE_KILL(getppid(), SIGUSR2);
 }
 
-void parent_handler(int sig LTP_ATTRIBUTE_UNUSED)
+static void parent_handler(int sig LTP_ATTRIBUTE_UNUSED)
 {
 	got_signal = 1;
 }
 
-void do_child(unsigned int i)
+static void do_child(unsigned int i)
 {
 	struct sigaction child_act;
 
