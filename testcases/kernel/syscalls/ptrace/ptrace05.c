@@ -41,34 +41,37 @@
 #include "tst_test.h"
 #include "lapi/signal.h"
 
-void run(void)
+static int start_signum = 0;
+static int end_signum;
+
+static void run(void)
 {
 
-	int end_signum = -1;
+	//int end_signum = -1;
 	int signum;
-	int start_signum = -1;
+	//int start_signum = -1;
 	int status;
 
 	pid_t child_pid;
 
-	if (start_signum == -1) {
+	end_signum = SIGRTMAX;
+
+	/*if (start_signum == -1) {
 		start_signum = 0;
 	}
 	if (end_signum == -1) {
 		end_signum = SIGRTMAX;
-	}
+	}*/
 
 	for (signum = start_signum; signum <= end_signum; signum++) {
 
 		if (signum >= __SIGRTMIN && signum < SIGRTMIN)
 			continue;
 
-			tst_res(TINFO, "signum: %i, start_signum: %i, end_signum: %i",
-				signum, start_signum, end_signum);
 		child_pid = SAFE_FORK();
 		if (child_pid == 0) {
 			if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) != -1) {
-				tst_res(TINFO, "[child_pid] Sending kill(.., %d)",
+				tst_res(TINFO, "[child] Sending kill(.., %d)",
 					 signum);
 				if (kill(getpid(), signum) < 0) {
 					tst_res(TINFO | TERRNO,
@@ -76,18 +79,10 @@ void run(void)
 						 signum);
 				}
 			} else {
-
-				/*
-				 * This won't increment the TST_COUNT var.
-				 * properly, but it'll show up as a failure
-				 * nonetheless.
-				 */
 				tst_res(TFAIL | TERRNO,
 					 "Failed to ptrace(PTRACE_TRACEME, ...) "
 					 "properly");
-
 			}
-			/* Shouldn't get here if signum == 0. */
 			exit((signum == 0 ? 0 : 2));
 		} else {
 			SAFE_WAITPID(child_pid, &status, 0);
@@ -105,7 +100,7 @@ void run(void)
 				}
 			} else if (signum == SIGKILL) {
 				if (WIFSIGNALED(status)) {
-					/* SIGKILL must be uncatchable. */
+
 					if (WTERMSIG(status) == SIGKILL) {
 						tst_res(TPASS,
 							 "Killed with SIGKILL, "
@@ -124,7 +119,7 @@ void run(void)
 						 "Stopped instead of dying "
 						 "with SIGKILL.");
 				}
-				/* All other processes should be stopped. */
+
 			} else {
 				if (WIFSTOPPED(status)) {
 					tst_res(TPASS, "Stopped as expected");
@@ -146,18 +141,17 @@ void run(void)
 
 				}
 
-
+			kill(child_pid, 9);
+			SAFE_WAITPID(child_pid, &status, 0);
 			}
+			
 		}
-		/* Make sure the child dies a quick and painless death ... */
-		kill(child_pid, 9);
 
 	}
 
 }
 
 static struct tst_test test = {
-	.test = run,
-	.tcnt = 1,
-	.forks_child = 0,
+	.test_all = run,
+	.forks_child = 1,
 };
