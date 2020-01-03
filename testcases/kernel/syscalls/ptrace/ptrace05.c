@@ -1,67 +1,29 @@
-//SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- ******************************************************************************
- *
- *   ptrace05 - an app which ptraces itself as per arbitrarily specified signals,
- *   over a user specified range.
- *
  *   Copyright (C) 2009, Ngie Cooper
+ *   Copyright (c) 2019 SUSE LLC
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   Ported to new library: Jorik Cronenberg <jcronenberg@suse.de>
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License along
- *   with this program; if not, write to the Free Software Foundation, Inc.,
- *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- ******************************************************************************
+ *   ptrace05 - an app which ptraces itself as per arbitrarily specified
+ *   signals, over a user specified range.
  */
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <signal.h>
-#include <errno.h>
-#include <libgen.h>
-#include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-
 #include <config.h>
 #include "ptrace.h"
-
 #include "tst_test.h"
-#include "lapi/signal.h"
-
-static int start_signum = 0;
-static int end_signum;
 
 static void run(void)
 {
 
-	//int end_signum = -1;
-	int signum;
-	//int start_signum = -1;
-	int status;
-
+	int signum, status;
+	int start_signum, end_signum;
 	pid_t child_pid;
 
+	start_signum = 0;
 	end_signum = SIGRTMAX;
-
-	/*if (start_signum == -1) {
-		start_signum = 0;
-	}
-	if (end_signum == -1) {
-		end_signum = SIGRTMAX;
-	}*/
 
 	for (signum = start_signum; signum <= end_signum; signum++) {
 
@@ -72,63 +34,66 @@ static void run(void)
 		if (child_pid == 0) {
 			if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) != -1) {
 				tst_res(TINFO, "[child] Sending kill(.., %d)",
-					 signum);
+					signum);
 				if (kill(getpid(), signum) < 0) {
 					tst_res(TINFO | TERRNO,
-						 "[child_pid] kill(.., %d) failed.",
-						 signum);
+						"[child] kill(.., %d) "
+						"failed", signum);
 				}
 			} else {
 				tst_res(TFAIL | TERRNO,
-					 "Failed to ptrace(PTRACE_TRACEME, ...) "
-					 "properly");
+					"Failed to ptrace(PTRACE_TRACEME, ...) "
+					"properly");
 			}
 			exit((signum == 0 ? 0 : 2));
 		} else {
 			SAFE_WAITPID(child_pid, &status, 0);
 
-			if (signum == 0) {
+			switch (signum) {
+			case 0:
 				if (WIFEXITED(status)
 				    && WEXITSTATUS(status) == 0) {
 					tst_res(TPASS,
 						 "kill(.., 0) exited "
-						 "with 0, as expected.");
+						 "with 0, as expected");
 				} else {
 					tst_res(TFAIL,
 						 "kill(.., 0) didn't exit "
-						 "with 0.");
+						 "with 0");
 				}
-			} else if (signum == SIGKILL) {
+				break;
+			case SIGKILL:
 				if (WIFSIGNALED(status)) {
 
 					if (WTERMSIG(status) == SIGKILL) {
 						tst_res(TPASS,
-							 "Killed with SIGKILL, "
-							 "as expected.");
+							"Terminated with "
+							"SIGKILL, as expected");
 					} else {
 						tst_res(TPASS,
-							 "Didn't die with "
-							 "SIGKILL (?!) ");
+							"Child didn't terminate"
+							" with SIGKILL");
 					}
 				} else if (WIFEXITED(status)) {
 					tst_res(TFAIL,
-						 "Exited unexpectedly instead "
-						 "of dying with SIGKILL.");
+						"Exited unexpectedly instead "
+						"of terminating with SIGKILL");
 				} else if (WIFSTOPPED(status)) {
 					tst_res(TFAIL,
-						 "Stopped instead of dying "
-						 "with SIGKILL.");
+						 "Stopped instead of exiting "
+						 "with SIGKILL");
 				}
-
-			} else {
+				break;
+			default:
 				if (WIFSTOPPED(status)) {
 					tst_res(TPASS, "Stopped as expected");
 				} else {
 					tst_res(TFAIL, "Didn't stop as "
-						 "expected.");
+						 "expected");
 					if (kill(child_pid, 0)) {
 						tst_res(TINFO,
-							 "Is still alive!?");
+							 "Process %i is still "
+							 "alive", child_pid);
 					} else if (WIFEXITED(status)) {
 						tst_res(TINFO,
 							 "Exited normally");
@@ -141,10 +106,10 @@ static void run(void)
 
 				}
 
-			kill(child_pid, 9);
+			SAFE_KILL(child_pid, 9);
 			SAFE_WAITPID(child_pid, &status, 0);
 			}
-			
+
 		}
 
 	}
