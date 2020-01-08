@@ -31,12 +31,14 @@
 static struct tcase {
 	int handler;
 	int mode;
-	//char *message;
+	int exp_wifexited;
+	int exp_wtermsig;
+	char *message;
 } tcases[] = {
-	{0, PTRACE_KILL},
-	{1, PTRACE_KILL},
-	{0, PTRACE_CONT},
-	{1, PTRACE_CONT}
+	{0, PTRACE_KILL, 0, 9, "Testing PTRACE_KILL without child handler"},
+	{1, PTRACE_KILL, 0, 9, "Testing PTRACE_KILL with child handler"},
+	{0, PTRACE_CONT, 1, 0, "Testing PTRACE_CONT without child handler"},
+	{1, PTRACE_CONT, 1, 0, "Testing PTRACE_CONT with child handler"},
 };
 
 static volatile int got_signal;
@@ -66,7 +68,7 @@ static void do_child(unsigned int i)
 	SAFE_SIGACTION(SIGUSR2, &child_act, NULL);
 
 	if ((ptrace(PTRACE_TRACEME, 0, 0, 0)) == -1) {
-		tst_res(TWARN, "ptrace() failed in child");
+		tst_res(TWARN | TERRNO, "ptrace() failed in child");
 		exit(1);
 	}
 	SAFE_KILL(getpid(), SIGUSR2);
@@ -81,6 +83,8 @@ static void run(unsigned int i)
 	struct sigaction parent_act;
 
 	got_signal = 0;
+
+	tst_res(TINFO, tc->message);
 
 	if (tc->handler == 1) {
 		parent_act.sa_handler = parent_handler;
@@ -97,25 +101,21 @@ static void run(unsigned int i)
 	SAFE_WAITPID(child_pid, &status, 0);
 
 	if (((WIFEXITED(status)) && (WEXITSTATUS(status)))
-		 || (got_signal == 1))
+		|| (got_signal == 1))
 		tst_res(TFAIL, "Test Failed");
 	else if ((ptrace(tc->mode, child_pid, 0, 0)) == -1)
-		tst_res(TFAIL | TERRNO, "ptrace(PTRACE_KILL, %i, 0, 0) failed",
-				child_pid);
+		tst_res(TFAIL | TERRNO, "ptrace(%i, %i, 0, 0) failed",
+			tc->mode, child_pid);
 
 	SAFE_WAITPID(child_pid, &status, 0);
 
-	switch (tc->mode) {
-		case PTRACE_KILL:
-			if (WTERMSIG(status) != 9)
-				break;
-		default:
-			if (WIFEXITED(status))
-				tst_res(TPASS, "Child %s as expected",
-				    tst_strstatus(status));
-			else
-				tst_res(TFAIL, "Child %s unexpectedly",
-				    tst_strstatus(status));
+	if (WIFEXITED(status) == tc->exp_wifexited
+		&& WTERMSIG(status) == tc->exp_wtermsig) {
+		tst_res(TPASS, "Child %s as expected",
+		    tst_strstatus(status));
+	} else {
+		tst_res(TFAIL, "Child %s unexpectedly",
+		    tst_strstatus(status));
 	}
 
 }
