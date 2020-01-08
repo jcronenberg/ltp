@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
- * Copyright (c) 2019 Jorik Cronenberg <jcronenberg@suse.de>
+ * Copyright (c) 2019 SUSE LLC
  *
  * Author: Saji Kumar.V.R <saji.kumar@wipro.com>
  * Ported to new library: Jorik Cronenberg <jcronenberg@suse.de>
  *
- * Test the functionality of ptrace() for PTRACE_TRACEME & PTRACE_KILL requests.
+ * Test the functionality of ptrace() for PTRACE_TRACEME in combination with
+ * PTRACE_KILL and PTRACE_CONT requests.
  * Forked child does ptrace(PTRACE_TRACEME, ...).
  * Then a signal is delivered to the child and verified that parent
  * is notified via wait().
- * After parent does ptrace(PTRACE_KILL, ..) to kill the child
- * and parent wait() for child to finish.
- * Test passes if child finished abnormally.
+ * Afterwards parent does ptrace(PTRACE_KILL, ..)/ptrace(PTRACE_CONT, ..)
+ * and then parent does wait() for child to finish.
+ * Test passes if child exits with SIGKILL for PTRACE_KILL.
+ * Test passes if child exits normally for PTRACE_CONT.
  *
- * Testing two cases:
+ * Testing two cases for each:
  * 1) child ignore SIGUSR2 signal
  * 2) using a signal handler for child for SIGUSR2
  * In both cases, child should stop & notify parent on reception of SIGUSR2.
