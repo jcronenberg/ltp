@@ -42,12 +42,9 @@
 #include <fcntl.h>
 #include <time.h>
 #include <errno.h>
-#include "test.h"
+#include "tst_test.h"
+#include <lapi/fcntl.h>
 #include "lapi/syscalls.h"
-
-#define cleanup tst_exit
-
-char *TCID = "timerfd01";
 
 /*
  * This were good at the time of 2.6.23-rc7 ...
@@ -56,7 +53,7 @@ char *TCID = "timerfd01";
  *
  * ... but is not now with 2.6.25
  */
-#ifdef __NR_timerfd_create
+//TODO #ifdef __NR_timerfd_create
 
 /* Definitions from include/linux/timerfd.h */
 #define TFD_TIMER_ABSTIME (1 << 0)
@@ -88,20 +85,20 @@ void set_timespec(struct timespec *tmr, unsigned long long ustime)
 int timerfd_create(int clockid, int flags)
 {
 
-	return ltp_syscall(__NR_timerfd_create, clockid, flags);
+	return tst_syscall(__NR_timerfd_create, clockid, flags);
 }
 
 int timerfd_settime(int ufc, int flags, const struct itimerspec *utmr,
 		    struct itimerspec *otmr)
 {
 
-	return ltp_syscall(__NR_timerfd_settime, ufc, flags, utmr, otmr);
+	return tst_syscall(__NR_timerfd_settime, ufc, flags, utmr, otmr);
 }
 
 int timerfd_gettime(int ufc, struct itimerspec *otmr)
 {
 
-	return ltp_syscall(__NR_timerfd_gettime, ufc, otmr);
+	return tst_syscall(__NR_timerfd_gettime, ufc, otmr);
 }
 
 long waittmr(int tfd, int timeo)
@@ -128,9 +125,7 @@ long waittmr(int tfd, int timeo)
 	return ticks;
 }
 
-int TST_TOTAL = 3;
-
-int main(int ac, char **av)
+static void run(unsigned int n)
 {
 	int tfd;
 	unsigned int i;
@@ -143,11 +138,9 @@ int main(int ac, char **av)
 		{CLOCK_REALTIME, "CLOCK REALTIME"},
 	};
 
-	tst_parse_opts(ac, av, NULL, NULL);
-
 	if ((tst_kvercmp(2, 6, 25)) < 0) {
-		tst_resm(TCONF, "This test can only run on kernels that are ");
-		tst_resm(TCONF, "2.6.25 and higher");
+		tst_res(TCONF, "This test can only run on kernels that are ");
+		tst_res(TCONF, "2.6.25 and higher");
 		exit(0);
 	}
 
@@ -163,13 +156,13 @@ int main(int ac, char **av)
 		tnow = getustime(clks[i].id);
 		if ((tfd = timerfd_create(clks[i].id, 0)) == -1) {
 			perror("timerfd");
-			return 1;
+			return;
 		}
 		fprintf(stdout, "timerfd = %d\n", tfd);
 
 		if (timerfd_settime(tfd, 0, &tmr, NULL)) {
 			perror("timerfd_settime");
-			return 1;
+			return;
 		}
 
 		fprintf(stdout, "wating timer ...\n");
@@ -187,7 +180,7 @@ int main(int ac, char **av)
 		set_timespec(&tmr.it_interval, 0);
 		if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
 			perror("timerfd_settime");
-			return 1;
+			return;
 		}
 
 		fprintf(stdout, "wating timer ...\n");
@@ -205,14 +198,14 @@ int main(int ac, char **av)
 		set_timespec(&tmr.it_interval, 100 * 1000);
 		if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
 			perror("timerfd_settime");
-			return 1;
+			return;
 		}
 
 		fprintf(stdout, "sleeping 1 second ...\n");
 		sleep(1);
 		if (timerfd_gettime(tfd, &tmr)) {
 			perror("timerfd_gettime");
-			return 1;
+			return;
 		}
 		fprintf(stdout, "timerfd_gettime returned:\n"
 			"\tit_value = { %ld, %ld } it_interval = { %ld, %ld }\n",
@@ -237,7 +230,7 @@ int main(int ac, char **av)
 		set_timespec(&tmr.it_interval, 0);
 		if (timerfd_settime(tfd, 0, &tmr, NULL)) {
 			perror("timerfd_settime");
-			return 1;
+			return;
 		}
 		fprintf(stdout, "timerfd = %d\n", tfd);
 
@@ -265,18 +258,12 @@ int main(int ac, char **av)
 		fcntl(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) & ~O_NONBLOCK);
 
 		close(tfd);
+
+		tst_res(TPASS, "Passed test %i", n);
 	}
-
-	tst_exit();
 }
 
-#else
-int TST_TOTAL = 0;
-
-int main(void)
-{
-
-	tst_brkm(TCONF, NULL,
-		 "This test needs a kernel that has timerfd syscall.");
-}
-#endif
+static struct tst_test test = {
+	.test = run,
+	.tcnt = 3,
+};
