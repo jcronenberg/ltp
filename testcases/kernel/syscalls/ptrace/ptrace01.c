@@ -28,6 +28,17 @@
 #include "ptrace.h"
 #include "tst_test.h"
 
+static struct tcase {
+	int handler;
+	int mode;
+	//char *message;
+} tcases[] = {
+	{0, PTRACE_KILL},
+	{1, PTRACE_KILL},
+	{0, PTRACE_CONT},
+	{1, PTRACE_CONT}
+};
+
 static volatile int got_signal;
 
 static void child_handler(int sig LTP_ATTRIBUTE_UNUSED)
@@ -64,13 +75,14 @@ static void do_child(unsigned int i)
 
 static void run(unsigned int i)
 {
+	struct tcase *tc = &tcases[i];
 	pid_t child_pid;
 	int status;
 	struct sigaction parent_act;
 
 	got_signal = 0;
 
-	if (i == 1) {
+	if (tc->handler == 1) {
 		parent_act.sa_handler = parent_handler;
 		parent_act.sa_flags = SA_RESTART;
 		sigemptyset(&parent_act.sa_mask);
@@ -80,28 +92,36 @@ static void run(unsigned int i)
 	child_pid = SAFE_FORK();
 
 	if (!child_pid)
-		do_child(i);
+		do_child(tc->handler);
 
 	SAFE_WAITPID(child_pid, &status, 0);
 
 	if (((WIFEXITED(status)) && (WEXITSTATUS(status)))
 		 || (got_signal == 1))
 		tst_res(TFAIL, "Test Failed");
-	else if ((ptrace(PTRACE_KILL, child_pid, 0, 0)) == -1)
+	else if ((ptrace(tc->mode, child_pid, 0, 0)) == -1)
 		tst_res(TFAIL | TERRNO, "ptrace(PTRACE_KILL, %i, 0, 0) failed",
 				child_pid);
 
 	SAFE_WAITPID(child_pid, &status, 0);
 
-	if (WTERMSIG(status) == 9)
-		tst_res(TPASS, "Child %s as expected", tst_strstatus(status));
-	else
-		tst_res(TFAIL, "Child %s unexpectedly", tst_strstatus(status));
+	switch (tc->mode) {
+		case PTRACE_KILL:
+			if (WTERMSIG(status) != 9)
+				break;
+		default:
+			if (WIFEXITED(status))
+				tst_res(TPASS, "Child %s as expected",
+				    tst_strstatus(status));
+			else
+				tst_res(TFAIL, "Child %s unexpectedly",
+				    tst_strstatus(status));
+	}
 
 }
 
 static struct tst_test test = {
 	.test = run,
-	.tcnt = 2,
+	.tcnt = ARRAY_SIZE(tcases),
 	.forks_child = 1,
 };
