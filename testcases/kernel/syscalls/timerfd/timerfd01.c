@@ -53,10 +53,13 @@
  *
  * ... but is not now with 2.6.25
  */
-//TODO #ifdef __NR_timerfd_create
+#ifdef __NR_timerfd_create
 
 /* Definitions from include/linux/timerfd.h */
 #define TFD_TIMER_ABSTIME (1 << 0)
+#else
+#define TFD_TIMER_ABSTIME (0)
+#endif
 
 struct tmr_type {
 	int id;
@@ -68,7 +71,7 @@ unsigned long long getustime(int clockid)
 	struct timespec tp;
 
 	if (clock_gettime((clockid_t) clockid, &tp)) {
-		perror("clock_gettime");
+		tst_res(TFAIL, "clock_gettime");
 		return 0;
 	}
 
@@ -110,7 +113,7 @@ long waittmr(int tfd, int timeo)
 	pfd.events = POLLIN;
 	pfd.revents = 0;
 	if (poll(&pfd, 1, timeo) < 0) {
-		perror("poll");
+		tst_res(TFAIL, "poll");
 		return -1;
 	}
 	if ((pfd.revents & POLLIN) == 0) {
@@ -118,7 +121,7 @@ long waittmr(int tfd, int timeo)
 		return -1;
 	}
 	if (read(tfd, &ticks, sizeof(ticks)) != sizeof(ticks)) {
-		perror("timerfd read");
+		tst_res(TFAIL, "timerfd read");
 		return -1;
 	}
 
@@ -138,30 +141,22 @@ static void run(unsigned int n)
 		{CLOCK_REALTIME, "CLOCK REALTIME"},
 	};
 
-	if ((tst_kvercmp(2, 6, 25)) < 0) {
-		tst_res(TCONF, "This test can only run on kernels that are ");
-		tst_res(TCONF, "2.6.25 and higher");
-		exit(0);
-	}
+	if(TFD_TIMER_ABSTIME == 0)
+		tst_brk(TCONF, "Test not suited for this system");
 
 	for (i = 0; i < sizeof(clks) / sizeof(clks[0]); i++) {
-		fprintf(stdout,
-			"\n\n---------------------------------------\n");
-		fprintf(stdout, "| testing %s\n", clks[i].name);
-		fprintf(stdout, "---------------------------------------\n\n");
+		tst_res(TINFO, "testing %s", clks[i].name);
 
-		fprintf(stdout, "relative timer test (at 500 ms) ...\n");
 		set_timespec(&tmr.it_value, 500 * 1000);
 		set_timespec(&tmr.it_interval, 0);
 		tnow = getustime(clks[i].id);
 		if ((tfd = timerfd_create(clks[i].id, 0)) == -1) {
-			perror("timerfd");
+			tst_res(TFAIL, "timerfd");
 			return;
 		}
-		fprintf(stdout, "timerfd = %d\n", tfd);
 
 		if (timerfd_settime(tfd, 0, &tmr, NULL)) {
-			perror("timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime");
 			return;
 		}
 
@@ -179,7 +174,7 @@ static void run(unsigned int n)
 		set_timespec(&tmr.it_value, tnow + 500 * 1000);
 		set_timespec(&tmr.it_interval, 0);
 		if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
-			perror("timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime");
 			return;
 		}
 
@@ -197,14 +192,14 @@ static void run(unsigned int n)
 		set_timespec(&tmr.it_value, tnow + 100 * 1000);
 		set_timespec(&tmr.it_interval, 100 * 1000);
 		if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
-			perror("timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime");
 			return;
 		}
 
 		fprintf(stdout, "sleeping 1 second ...\n");
 		sleep(1);
 		if (timerfd_gettime(tfd, &tmr)) {
-			perror("timerfd_gettime");
+			tst_res(TFAIL, "timerfd_gettime");
 			return;
 		}
 		fprintf(stdout, "timerfd_gettime returned:\n"
@@ -229,7 +224,7 @@ static void run(unsigned int n)
 		set_timespec(&tmr.it_value, 100 * 1000);
 		set_timespec(&tmr.it_interval, 0);
 		if (timerfd_settime(tfd, 0, &tmr, NULL)) {
-			perror("timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime");
 			return;
 		}
 		fprintf(stdout, "timerfd = %d\n", tfd);
@@ -259,11 +254,12 @@ static void run(unsigned int n)
 
 		close(tfd);
 
-		tst_res(TPASS, "Passed test %i", n);
+		tst_res(TPASS, "Passed test %s %i",clks[i].name , n);
 	}
 }
 
 static struct tst_test test = {
 	.test = run,
 	.tcnt = 3,
+	.min_kver = "2.6.25",
 };
