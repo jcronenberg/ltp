@@ -160,83 +160,64 @@ static void run(unsigned int n)
 			return;
 		}
 
-		fprintf(stdout, "wating timer ...\n");
 		ticks = waittmr(tfd, -1);
 		ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
-			fprintf(stdout, "whooops! no timer showed up!\n");
-		else
-			fprintf(stdout, "got timer ticks (%ld) after %llu ms\n",
-				ticks, (ttmr - tnow) / 1000);
+			tst_res(TFAIL, "got no timer");
 
-		fprintf(stdout, "absolute timer test (at 500 ms) ...\n");
 		tnow = getustime(clks[i].id);
 		set_timespec(&tmr.it_value, tnow + 500 * 1000);
 		set_timespec(&tmr.it_interval, 0);
 		if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
-			tst_res(TFAIL, "timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime failed");
 			return;
 		}
 
-		fprintf(stdout, "wating timer ...\n");
 		ticks = waittmr(tfd, -1);
 		ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
-			fprintf(stdout, "whooops! no timer showed up!\n");
-		else
-			fprintf(stdout, "got timer ticks (%ld) after %llu ms\n",
-				ticks, (ttmr - tnow) / 1000);
+			tst_res(TFAIL, "got no timer");
 
-		fprintf(stdout, "sequential timer test (100 ms clock) ...\n");
 		tnow = getustime(clks[i].id);
 		set_timespec(&tmr.it_value, tnow + 100 * 1000);
 		set_timespec(&tmr.it_interval, 100 * 1000);
 		if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
-			tst_res(TFAIL, "timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime failed");
 			return;
 		}
 
-		fprintf(stdout, "sleeping 1 second ...\n");
+		tst_res(TINFO, "Sleeping for 1 second");
 		sleep(1);
 		if (timerfd_gettime(tfd, &tmr)) {
-			tst_res(TFAIL, "timerfd_gettime");
+			tst_res(TFAIL, "timerfd_gettime failed");
 			return;
 		}
-		fprintf(stdout, "timerfd_gettime returned:\n"
-			"\tit_value = { %ld, %ld } it_interval = { %ld, %ld }\n",
+		tst_res(TINFO, "timerfd_gettime returned:\n"
+			"it_value = { %ld, %ld } it_interval = { %ld, %ld }",
 			(long)tmr.it_value.tv_sec, (long)tmr.it_value.tv_nsec,
 			(long)tmr.it_interval.tv_sec,
 			(long)tmr.it_interval.tv_nsec);
-		fprintf(stdout, "sleeping 1 second ...\n");
+		tst_res(TINFO, "Sleeping for 1 second");
 		sleep(1);
 
-		fprintf(stdout, "wating timer ...\n");
 		ticks = waittmr(tfd, -1);
 		ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
-			fprintf(stdout, "whooops! no timer showed up!\n");
-		else
-			fprintf(stdout, "got timer ticks (%ld) after %llu ms\n",
-				ticks, (ttmr - tnow) / 1000);
+			tst_res(TFAIL, "got no timer");
 
-		fprintf(stdout, "O_NONBLOCK test ...\n");
+		tst_res(TINFO, "testing O_NONBLOCK");
 		tnow = getustime(clks[i].id);
 		set_timespec(&tmr.it_value, 100 * 1000);
 		set_timespec(&tmr.it_interval, 0);
 		if (timerfd_settime(tfd, 0, &tmr, NULL)) {
-			tst_res(TFAIL, "timerfd_settime");
+			tst_res(TFAIL, "timerfd_settime failed");
 			return;
 		}
-		fprintf(stdout, "timerfd = %d\n", tfd);
 
-		fprintf(stdout, "wating timer (flush the single tick) ...\n");
 		ticks = waittmr(tfd, -1);
 		ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
-			fprintf(stdout, "whooops! no timer showed up!\n");
-		else
-			fprintf(stdout, "got timer ticks (%ld) after %llu ms\n",
-				ticks, (ttmr - tnow) / 1000);
+			tst_res(TFAIL, "got no timer");
 
 		fcntl(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) | O_NONBLOCK);
 
@@ -248,13 +229,11 @@ static void run(unsigned int n)
 				"whooops! bad errno value (%d = '%s')!\n",
 				errno, strerror(errno));
 		else
-			fprintf(stdout, "success\n");
+			tst_res(TPASS, "Passed test %s %i",clks[i].name , n);
 
 		fcntl(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) & ~O_NONBLOCK);
 
 		close(tfd);
-
-		tst_res(TPASS, "Passed test %s %i",clks[i].name , n);
 	}
 }
 
