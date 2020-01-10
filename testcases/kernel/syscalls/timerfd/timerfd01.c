@@ -129,7 +129,7 @@ static void run(unsigned int n)
 	int tfd;
 	unsigned int i;
 	long ticks;
-	unsigned long long tnow, ttmr;
+	unsigned long long tnow; //ttmr;
 	u_int64_t uticks;
 	struct itimerspec tmr;
 	struct tmr_type clks[] = {
@@ -157,7 +157,7 @@ static void run(unsigned int n)
 		}
 
 		ticks = waittmr(tfd, -1);
-		ttmr = getustime(clks[i].id);
+		//ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
 			tst_res(TFAIL, "got no timer");
 
@@ -170,7 +170,7 @@ static void run(unsigned int n)
 		}
 
 		ticks = waittmr(tfd, -1);
-		ttmr = getustime(clks[i].id);
+		//ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
 			tst_res(TFAIL, "got no timer");
 
@@ -197,7 +197,7 @@ static void run(unsigned int n)
 		sleep(1);
 
 		ticks = waittmr(tfd, -1);
-		ttmr = getustime(clks[i].id);
+		//ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
 			tst_res(TFAIL, "got no timer");
 
@@ -211,25 +211,23 @@ static void run(unsigned int n)
 		}
 
 		ticks = waittmr(tfd, -1);
-		ttmr = getustime(clks[i].id);
+		//ttmr = getustime(clks[i].id);
 		if (ticks <= 0)
 			tst_res(TFAIL, "got no timer");
 
-		fcntl(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) | O_NONBLOCK);
+		SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) | O_NONBLOCK);
 
-		if (read(tfd, &uticks, sizeof(uticks)) > 0)
-			fprintf(stdout,
-				"whooops! timer ticks not zero when should have been\n");
-		else if (errno != EAGAIN)
-			fprintf(stdout,
-				"whooops! bad errno value (%d = '%s')!\n",
-				errno, strerror(errno));
+		TEST(read(tfd, &uticks, sizeof(uticks)));
+		if(TST_RET > 0)
+			tst_res(TFAIL, "timer ticks not zero");
+		else if (TST_ERR != EAGAIN)
+			tst_res(TFAIL | TERRNO, "expected errno EAGAIN got");
 		else
 			tst_res(TPASS, "Passed test %s %i",clks[i].name , n);
 
-		fcntl(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) & ~O_NONBLOCK);
+		SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) & ~O_NONBLOCK);
 
-		close(tfd);
+		SAFE_CLOSE(tfd);
 	}
 }
 
