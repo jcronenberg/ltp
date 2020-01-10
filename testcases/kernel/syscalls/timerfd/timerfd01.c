@@ -66,7 +66,7 @@ struct tmr_type {
 	char const *name;
 };
 
-unsigned long long getustime(int clockid)
+static unsigned long long getustime(int clockid)
 {
 	struct timespec tp;
 
@@ -78,33 +78,29 @@ unsigned long long getustime(int clockid)
 	return 1000000ULL * tp.tv_sec + tp.tv_nsec / 1000;
 }
 
-void set_timespec(struct timespec *tmr, unsigned long long ustime)
+static void set_timespec(struct timespec *tmr, unsigned long long ustime)
 {
-
 	tmr->tv_sec = (time_t) (ustime / 1000000ULL);
 	tmr->tv_nsec = (long)(1000ULL * (ustime % 1000000ULL));
 }
 
-int timerfd_create(int clockid, int flags)
+static int timerfd_create(int clockid, int flags)
 {
-
 	return tst_syscall(__NR_timerfd_create, clockid, flags);
 }
 
-int timerfd_settime(int ufc, int flags, const struct itimerspec *utmr,
+static int timerfd_settime(int ufc, int flags, const struct itimerspec *utmr,
 		    struct itimerspec *otmr)
 {
-
 	return tst_syscall(__NR_timerfd_settime, ufc, flags, utmr, otmr);
 }
 
-int timerfd_gettime(int ufc, struct itimerspec *otmr)
+static int timerfd_gettime(int ufc, struct itimerspec *otmr)
 {
-
 	return tst_syscall(__NR_timerfd_gettime, ufc, otmr);
 }
 
-long waittmr(int tfd, int timeo)
+static long waittmr(int tfd, int timeo)
 {
 	u_int64_t ticks;
 	struct pollfd pfd;
@@ -117,11 +113,11 @@ long waittmr(int tfd, int timeo)
 		return -1;
 	}
 	if ((pfd.revents & POLLIN) == 0) {
-		fprintf(stdout, "no ticks happened\n");
+		tst_res(TFAIL, "no ticks happened");
 		return -1;
 	}
 	if (read(tfd, &ticks, sizeof(ticks)) != sizeof(ticks)) {
-		tst_res(TFAIL, "timerfd read");
+		tst_res(TFAIL, "reading timerfd failed");
 		return -1;
 	}
 
