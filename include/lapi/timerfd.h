@@ -29,7 +29,7 @@
 #if !defined(HAVE_TIMERFD_CREATE)
 int timerfd_create(int clockid, int flags)
 {
-	return tst_syscall(__NR_timerfd_create, clockid, flags);
+	return ltp_syscall(__NR_timerfd_create, clockid, flags);
 }
 #endif
 
@@ -37,7 +37,7 @@ int timerfd_create(int clockid, int flags)
 int timerfd_settime(int fd, int flags, const struct itimerspec *new_value,
 		    struct itimerspec *old_value)
 {
-	return tst_syscall(__NR_timerfd_settime, fd, flags, new_value,
+	return ltp_syscall(__NR_timerfd_settime, fd, flags, new_value,
 			   old_value);
 }
 #endif
@@ -45,7 +45,7 @@ int timerfd_settime(int fd, int flags, const struct itimerspec *new_value,
 #if !defined(HAVE_TIMERFD_SETTIME)
 int timerfd_gettime(int fd, struct itimerspec *curr_value)
 {
-	return tst_syscall(__NR_timerfd_gettime, fd, curr_value);
+	return ltp_syscall(__NR_timerfd_gettime, fd, curr_value);
 }
 #endif
 
