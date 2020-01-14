@@ -10,8 +10,6 @@
  *		1) CLOCK_MONOTONIC
  *		2) CLOCK_REALTIME
  *
- * NAME
- *	timerfd01.c
  * HISTORY
  *	28/05/2008 Initial contribution by Davide Libenzi <davidel@xmailserver.org>
  *      28/05/2008 Integrated to LTP by Subrata Modak <subrata@linux.vnet.ibm.com>
@@ -35,7 +33,7 @@ static unsigned long long getustime(int clockid)
 	struct timespec tp;
 
 	if (clock_gettime((clockid_t) clockid, &tp)) {
-		tst_res(TFAIL, "clock_gettime");
+		tst_res(TFAIL | TERRNO, "clock_gettime() failed");
 		return 0;
 	}
 
@@ -154,7 +152,6 @@ static void run(unsigned int n)
 		tst_res(TPASS, "Passed test %s", clks->name);
 
 	SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) & ~O_NONBLOCK);
-
 	SAFE_CLOSE(tfd);
 
 }
