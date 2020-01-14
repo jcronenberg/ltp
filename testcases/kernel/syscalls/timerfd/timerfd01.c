@@ -45,6 +45,8 @@
 #include "tst_test.h"
 #include <lapi/fcntl.h>
 #include "lapi/syscalls.h"
+#include "lapi/timerfd.h"
+//#include "safe_macros.h"
 
 /*
  * This were good at the time of 2.6.23-rc7 ...
@@ -53,13 +55,13 @@
  *
  * ... but is not now with 2.6.25
  */
-#ifdef __NR_timerfd_create
+//#ifdef __NR_timerfd_create
 
 /* Definitions from include/linux/timerfd.h */
-#define TFD_TIMER_ABSTIME (1 << 0)
-#else
-#define TFD_TIMER_ABSTIME (0)
-#endif
+//#define TFD_TIMER_ABSTIME (1 << 0)
+//#else
+//#define TFD_TIMER_ABSTIME (0)
+//#endif
 
 struct tmr_type {
 	int id;
@@ -84,21 +86,21 @@ static void set_timespec(struct timespec *tmr, unsigned long long ustime)
 	tmr->tv_nsec = (long)(1000ULL * (ustime % 1000000ULL));
 }
 
-static int timerfd_create(int clockid, int flags)
-{
-	return tst_syscall(__NR_timerfd_create, clockid, flags);
-}
-
-static int timerfd_settime(int ufc, int flags, const struct itimerspec *utmr,
-		    struct itimerspec *otmr)
-{
-	return tst_syscall(__NR_timerfd_settime, ufc, flags, utmr, otmr);
-}
-
-static int timerfd_gettime(int ufc, struct itimerspec *otmr)
-{
-	return tst_syscall(__NR_timerfd_gettime, ufc, otmr);
-}
+//static int timerfd_create(int clockid, int flags)
+//{
+//	return tst_syscall(__NR_timerfd_create, clockid, flags);
+//}
+//
+//static int timerfd_settime(int ufc, int flags, const struct itimerspec *utmr,
+//		    struct itimerspec *otmr)
+//{
+//	return tst_syscall(__NR_timerfd_settime, ufc, flags, utmr, otmr);
+//}
+//
+//static int timerfd_gettime(int ufc, struct itimerspec *otmr)
+//{
+//	return tst_syscall(__NR_timerfd_gettime, ufc, otmr);
+//}
 
 static long waittmr(int tfd, int timeo)
 {
@@ -116,10 +118,11 @@ static long waittmr(int tfd, int timeo)
 		tst_res(TFAIL, "no ticks happened");
 		return -1;
 	}
-	if (read(tfd, &ticks, sizeof(ticks)) != sizeof(ticks)) {
-		tst_res(TFAIL, "reading timerfd failed");
-		return -1;
-	}
+	SAFE_READ(0, tfd, &ticks, sizeof(ticks));
+	//if (read(tfd, &ticks, sizeof(ticks)) != sizeof(ticks)) {
+	//	tst_res(TFAIL, "reading timerfd failed");
+	//	return -1;
+	//}
 
 	return ticks;
 }
