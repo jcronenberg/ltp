@@ -6,9 +6,9 @@
  *  Davide Libenzi <davidel@xmailserver.org>
  *
  *  Description:
- *  	Test timerfd with the flags:
- *  		1) CLOCK_MONOTONIC
- *  		2) CLOCK_REALTIME
+ *	Test timerfd with the flags:
+ *		1) CLOCK_MONOTONIC
+ *		2) CLOCK_REALTIME
  *
  * NAME
  *	timerfd01.c
@@ -78,7 +78,7 @@ static void run(unsigned int n)
 	struct itimerspec tmr;
 	struct tcase *clks = &tcases[n];
 
-	if(TFD_TIMER_ABSTIME == 0)
+	if (TFD_TIMER_ABSTIME == 0)
 		tst_brk(TCONF, "Test not suited for this system");
 
 	tst_res(TINFO, "testing %s", clks->name);
@@ -86,8 +86,9 @@ static void run(unsigned int n)
 	set_timespec(&tmr.it_value, 500 * 1000);
 	set_timespec(&tmr.it_interval, 0);
 	tnow = getustime(clks->id);
-	if ((tfd = timerfd_create(clks->id, 0)) == -1) {
-		tst_res(TFAIL | TERRNO, "timerfd");
+	tfd = timerfd_create(clks->id, 0);
+	if (tfd == -1) {
+		tst_res(TFAIL | TERRNO, "timerfd_create() failed");
 		return;
 	}
 
@@ -145,17 +146,17 @@ static void run(unsigned int n)
 	SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) | O_NONBLOCK);
 
 	TEST(read(tfd, &uticks, sizeof(uticks)));
-	if(TST_RET > 0)
+	if (TST_RET > 0)
 		tst_res(TFAIL, "timer ticks not zero");
 	else if (TST_ERR != EAGAIN)
 		tst_res(TFAIL | TERRNO, "expected errno EAGAIN got");
 	else
-		tst_res(TPASS, "Passed test %s",clks->name);
+		tst_res(TPASS, "Passed test %s", clks->name);
 
 	SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) & ~O_NONBLOCK);
 
 	SAFE_CLOSE(tfd);
-	
+
 }
 
 static struct tst_test test = {
