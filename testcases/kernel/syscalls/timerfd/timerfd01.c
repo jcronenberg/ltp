@@ -83,15 +83,15 @@ static void run(unsigned int n)
 
 	tst_res(TINFO, "testing %s", clks->name);
 
-	set_timespec(&tmr.it_value, 500 * 1000);
-	set_timespec(&tmr.it_interval, 0);
-	tnow = getustime(clks->id);
 	tfd = timerfd_create(clks->id, 0);
 	if (tfd == -1) {
 		tst_res(TFAIL | TERRNO, "timerfd_create() failed");
 		return;
 	}
 
+	tnow = getustime(clks->id);
+	set_timespec(&tmr.it_value, 500 * 1000);
+	set_timespec(&tmr.it_interval, 0);
 	if (timerfd_settime(tfd, 0, &tmr, NULL)) {
 		tst_res(TFAIL | TERRNO, "timerfd_settime");
 		return;
