@@ -121,7 +121,7 @@ static void run(unsigned int n)
 	}
 	waittmr(tfd, -1);
 
-	tst_res(TINFO, "testing O_NONBLOCK");
+	tst_res(TINFO, "testing with O_NONBLOCK");
 	tnow = getustime(clks->id);
 	set_timespec(&tmr.it_value, 100 * 1000);
 	set_timespec(&tmr.it_interval, 0);
