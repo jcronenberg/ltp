@@ -108,7 +108,7 @@ static void run(unsigned int n)
 	settime(tfd, &tmr, TFD_TIMER_ABSTIME, tnow + 100 * 1000, 100 * 1000);
 
 	if (timerfd_gettime(tfd, &tmr))
-		tst_res(TFAIL | TERRNO, "timerfd_gettime failed");
+		tst_res(TFAIL | TERRNO, "timerfd_gettime() failed");
 
 	waittmr(tfd, -1);
 
