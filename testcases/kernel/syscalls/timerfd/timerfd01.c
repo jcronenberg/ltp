@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  timerfd() test by Davide Libenzi (test app for timerfd)
  *  Copyright (C) 2007  Davide Libenzi
