@@ -11,8 +11,8 @@
  *		2) CLOCK_REALTIME
  *
  * HISTORY
- *	28/05/2008 Initial contribution by Davide Libenzi <davidel@xmailserver.org>
- *      28/05/2008 Integrated to LTP by Subrata Modak <subrata@linux.vnet.ibm.com>
+ *  28/05/2008 Initial contribution by Davide Libenzi <davidel@xmailserver.org>
+ *  28/05/2008 Integrated to LTP by Subrata Modak <subrata@linux.vnet.ibm.com>
  */
 
 #define _GNU_SOURCE
@@ -46,6 +46,15 @@ static void set_timespec(struct timespec *tmr, unsigned long long ustime)
 	tmr->tv_nsec = (long)(1000ULL * (ustime % 1000000ULL));
 }
 
+static void settime(int tfd, struct itimerspec *tmr, int tflags,
+	unsigned long long tvalue, int tinterval)
+{
+	set_timespec(&tmr->it_value, tvalue);
+	set_timespec(&tmr->it_interval, tinterval);
+	if (timerfd_settime(tfd, tflags, tmr, NULL))
+		tst_brk(TFAIL | TERRNO, "timerfd_settime() failed");
+}
+
 static void waittmr(int tfd, int timeo)
 {
 	u_int64_t ticks;
@@ -66,8 +75,6 @@ static void waittmr(int tfd, int timeo)
 
 	if (ticks <= 0)
 		tst_res(TFAIL, "got no timer");
-
-	return;
 }
 
 static void run(unsigned int n)
@@ -84,51 +91,29 @@ static void run(unsigned int n)
 	tst_res(TINFO, "testing %s", clks->name);
 
 	tfd = timerfd_create(clks->id, 0);
-	if (tfd == -1) {
-		tst_res(TFAIL | TERRNO, "timerfd_create() failed");
-		return;
-	}
+	if (tfd == -1)
+		tst_brk(TFAIL | TERRNO, "timerfd_create() failed");
 
-	tnow = getustime(clks->id);
-	set_timespec(&tmr.it_value, 500 * 1000);
-	set_timespec(&tmr.it_interval, 0);
-	if (timerfd_settime(tfd, 0, &tmr, NULL)) {
-		tst_res(TFAIL | TERRNO, "timerfd_settime");
-		return;
-	}
+	tst_res(TINFO, "relative timer (500 ms)");
+	settime(tfd, &tmr, 0, 500 * 1000, 0);
 	waittmr(tfd, -1);
 
+	tst_res(TINFO, "absolute timer (500 ms)");
 	tnow = getustime(clks->id);
-	set_timespec(&tmr.it_value, tnow + 500 * 1000);
-	set_timespec(&tmr.it_interval, 0);
-	if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
-		tst_res(TFAIL | TERRNO, "timerfd_settime failed");
-		return;
-	}
+	settime(tfd, &tmr, TFD_TIMER_ABSTIME, tnow + 500 * 1000, 0);
 	waittmr(tfd, -1);
 
+	tst_res(TINFO, "sequential timer (100 ms)");
 	tnow = getustime(clks->id);
-	set_timespec(&tmr.it_value, tnow + 100 * 1000);
-	set_timespec(&tmr.it_interval, 100 * 1000);
-	if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &tmr, NULL)) {
-		tst_res(TFAIL | TERRNO, "timerfd_settime failed");
-		return;
-	}
+	settime(tfd, &tmr, TFD_TIMER_ABSTIME, tnow + 100 * 1000, 100 * 1000);
 
-	if (timerfd_gettime(tfd, &tmr)) {
+	if (timerfd_gettime(tfd, &tmr))
 		tst_res(TFAIL | TERRNO, "timerfd_gettime failed");
-		return;
-	}
+
 	waittmr(tfd, -1);
 
 	tst_res(TINFO, "testing with O_NONBLOCK");
-	tnow = getustime(clks->id);
-	set_timespec(&tmr.it_value, 100 * 1000);
-	set_timespec(&tmr.it_interval, 0);
-	if (timerfd_settime(tfd, 0, &tmr, NULL)) {
-		tst_res(TFAIL | TERRNO, "timerfd_settime failed");
-		return;
-	}
+	settime(tfd, &tmr, 0, 100 * 1000, 0);
 	waittmr(tfd, -1);
 
 	SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) | O_NONBLOCK);
