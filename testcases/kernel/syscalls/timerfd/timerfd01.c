@@ -46,7 +46,7 @@ static void set_timespec(struct timespec *tmr, unsigned long long ustime)
 	tmr->tv_nsec = (long)(1000ULL * (ustime % 1000000ULL));
 }
 
-static long waittmr(int tfd, int timeo)
+static void waittmr(int tfd, int timeo)
 {
 	u_int64_t ticks;
 	struct pollfd pfd;
@@ -56,21 +56,23 @@ static long waittmr(int tfd, int timeo)
 	pfd.revents = 0;
 	if (poll(&pfd, 1, timeo) < 0) {
 		tst_res(TFAIL | TERRNO, "poll() failed");
-		return -1;
+		return;
 	}
 	if ((pfd.revents & POLLIN) == 0) {
 		tst_res(TFAIL, "no ticks happened");
-		return -1;
+		return;
 	}
 	SAFE_READ(0, tfd, &ticks, sizeof(ticks));
 
-	return ticks;
+	if (ticks <= 0)
+		tst_res(TFAIL, "got no timer");
+
+	return;
 }
 
 static void run(unsigned int n)
 {
 	int tfd;
-	long ticks;
 	unsigned long long tnow;
 	u_int64_t uticks;
 	struct itimerspec tmr;
@@ -94,10 +96,7 @@ static void run(unsigned int n)
 		tst_res(TFAIL | TERRNO, "timerfd_settime");
 		return;
 	}
-
-	ticks = waittmr(tfd, -1);
-	if (ticks <= 0)
-		tst_res(TFAIL, "got no timer");
+	waittmr(tfd, -1);
 
 	tnow = getustime(clks->id);
 	set_timespec(&tmr.it_value, tnow + 500 * 1000);
@@ -106,10 +105,7 @@ static void run(unsigned int n)
 		tst_res(TFAIL | TERRNO, "timerfd_settime failed");
 		return;
 	}
-
-	ticks = waittmr(tfd, -1);
-	if (ticks <= 0)
-		tst_res(TFAIL, "got no timer");
+	waittmr(tfd, -1);
 
 	tnow = getustime(clks->id);
 	set_timespec(&tmr.it_value, tnow + 100 * 1000);
@@ -123,10 +119,7 @@ static void run(unsigned int n)
 		tst_res(TFAIL | TERRNO, "timerfd_gettime failed");
 		return;
 	}
-
-	ticks = waittmr(tfd, -1);
-	if (ticks <= 0)
-		tst_res(TFAIL, "got no timer");
+	waittmr(tfd, -1);
 
 	tst_res(TINFO, "testing O_NONBLOCK");
 	tnow = getustime(clks->id);
@@ -136,10 +129,7 @@ static void run(unsigned int n)
 		tst_res(TFAIL | TERRNO, "timerfd_settime failed");
 		return;
 	}
-
-	ticks = waittmr(tfd, -1);
-	if (ticks <= 0)
-		tst_res(TFAIL, "got no timer");
+	waittmr(tfd, -1);
 
 	SAFE_FCNTL(tfd, F_SETFL, fcntl(tfd, F_GETFL, 0) | O_NONBLOCK);
 
