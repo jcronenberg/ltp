@@ -39,7 +39,7 @@ static void run(void)
 
 	TEST(tst_syscall(__NR_timer_gettime, -1, &spec));
 	if (TST_RET == -1 && TST_ERR == EINVAL) {
-		tst_res(TPASS,	"timer_gettime(-1) Failed: EINVAL");
+		tst_res(TPASS | TERRNO, "timer_gettime(-1) failed as expected");
 	} else {
 		tst_res(TFAIL | TERRNO,
 		         "timer_gettime(-1) = %li", TST_RET);
@@ -47,7 +47,7 @@ static void run(void)
 
 	TEST(tst_syscall(__NR_timer_gettime, timer, NULL));
 	if (TST_RET == -1 && TST_ERR == EFAULT) {
-		tst_res(TPASS,	"timer_gettime(NULL) Failed: EFAULT");
+		tst_res(TPASS | TERRNO, "timer_gettime(NULL) failed as expected");
 	} else {
 		tst_res(TFAIL | TERRNO,
 		         "timer_gettime(-1) = %li", TST_RET);
