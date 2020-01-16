@@ -27,29 +27,29 @@ static void run(void)
 
 	TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &timer));
 	if (TST_RET != 0)
-		tst_brk(TBROK | TERRNO, "Failed to create timer");
+		tst_brk(TBROK | TTERRNO, "Failed to create timer");
 
 	TEST(tst_syscall(__NR_timer_gettime, timer, &spec));
 	if (TST_RET == 0) {
 		tst_res(TPASS, "timer_gettime(CLOCK_REALTIME) Passed");
 	} else {
-		tst_res(TFAIL | TERRNO,
+		tst_res(TFAIL | TTERRNO,
 		         "timer_gettime(CLOCK_REALTIME) Failed");
 	}
 
 	TEST(tst_syscall(__NR_timer_gettime, -1, &spec));
 	if (TST_RET == -1 && TST_ERR == EINVAL) {
-		tst_res(TPASS | TERRNO, "timer_gettime(-1) failed as expected");
+		tst_res(TPASS | TTERRNO, "timer_gettime(-1) failed as expected");
 	} else {
-		tst_res(TFAIL | TERRNO,
+		tst_res(TFAIL | TTERRNO,
 		         "timer_gettime(-1) = %li", TST_RET);
 	}
 
 	TEST(tst_syscall(__NR_timer_gettime, timer, NULL));
 	if (TST_RET == -1 && TST_ERR == EFAULT) {
-		tst_res(TPASS | TERRNO, "timer_gettime(NULL) failed as expected");
+		tst_res(TPASS | TTERRNO, "timer_gettime(NULL) failed as expected");
 	} else {
-		tst_res(TFAIL | TERRNO,
+		tst_res(TFAIL | TTERRNO,
 		         "timer_gettime(-1) = %li", TST_RET);
 	}
 	
