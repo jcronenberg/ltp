@@ -29,97 +29,58 @@
 #include "tst_test.h"
 #include "lapi/syscalls.h"
 
-/*static void cleanup(void)
-{
-	tst_rmdir();
-}
-
-static void setup(void)
-{
-	TEST_PAUSE;
-	tst_tmpdir();
-}*/
-/*
- * TODO
- * remove for loop
- * instead put timer and spec into a nice struct
- * prob add a replace into the struct aswell
- * not necessary but more elegant
- * more futurproof fingers crossed
- */
-
-struct test_case {
-	//int create_timer;
-	char desc[100];
+static struct tcase {
 	int exp_err;
 	int timer;
-	struct itimerspec *spec;
-};
-
-struct test_case tc[] = {
+	struct itimerspec spec;
+	char const *name;
+} tcases[] = {
 	{
-	 //.create_timer = 1,
-	 .desc = "timer_gettime(CLOCK_REALTIME)",
-	 .timer = 0,
 	 .exp_err = 0,
-	 },
-	{
-	 .desc = "timer_gettime(minusone)",
-	 .timer = -1,
-	 .exp_err = EINVAL,
-	 },
-	{
-	 //.create_timer = 1,
-	 .desc = "timer_gettime(NULL)",
 	 .timer = 0,
+	 .name = "timer_gettime(CLOCK_REALTIME)",
+	 },
+	{
+	 .exp_err = EINVAL,
+	 .timer = -1,
+	 .name = "timer_gettime(minusone)",
+	 },
+	{
 	 .exp_err = EFAULT,	 
-	 .spec = NULL,
+	 .timer = 0,
+	 .spec = ,
+	 .name = "timer_gettime(NULL)",
 	 },
 };
-
-static int create_timer = 0;
 
 static void run(unsigned int n)
 {
 	struct sigevent ev;
+	struct tcase *tc = &tcases[n];
 	
-	create_timer++;
-
 	ev.sigev_value = (union sigval) 0;
 	ev.sigev_signo = SIGALRM;
 	ev.sigev_notify = SIGEV_SIGNAL;
-	if(create_timer == 1) {
-		TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &tc[n].timer));
-
-		printf ("Created Timer");
-
+	if(!n) {
+		TEST(tst_syscall(__NR_timer_create, CLOCK_REALTIME, &ev, &tc->timer));
 		if (TST_RET != 0)
 			tst_brk(TBROK | TERRNO, "Failed to create timer");
 	} 
-	
-	printf("timerid:%i", tc[n].timer);
 
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(tc); i++) {
-	TEST(tst_syscall(__NR_timer_gettime, tc[i].timer, &tc[i].spec));
+	TEST(tst_syscall(__NR_timer_gettime, tc->timer, &tc->spec));
 	
-	//printf("\nTST_RET = %li \nTST_ERR = %i\nDesc = %s", TST_RET, TST_ERR, tc[n].desc);	
-	if (TST_RET == tc[i].exp_err) {
-		tst_res(TPASS, "%s Passed", tc[i].desc);
-	} else if (TST_RET == -1 && TST_ERR == tc[i].exp_err) {
-		tst_res(TPASS,  "%s failed expectedly", tc[i].desc);
-	} else if (TST_RET == 0)  {
-		tst_res(TFAIL | TERRNO, "%s succeded unexpectedly", tc[i].desc);
-	} else {
-		tst_res(TFAIL | TERRNO, "%s failed", tc[i].desc);
-	}
-	}
+		if (TST_RET == tc->exp_err)
+			tst_res(TPASS, "%s Passed", tc->name);
+		else if (TST_RET == -1 && TST_ERR == tc->exp_err)
+			tst_res(TPASS,  "%s failed expectedly", tc->name);
+		else if (TST_RET == 0)
+			tst_res(TFAIL, "%s succeded unexpectedly", tc->name);
+		else
+			tst_res(TFAIL | TERRNO, "%s failed", tc->name);
+
 }
 
 static struct tst_test test = {
-	//.setup = setup,
 	.test = run,
-	.needs_tmpdir = 1,
-	.tcnt = 1,
+	.tcnt = ARRAY_SIZE(tcases),
 };
