@@ -77,15 +77,16 @@ static void run(unsigned int i)
 	} else {
 		SAFE_WAITPID(child_pid, &status, 0);
 
-		if ((WIFEXITED(status)) && (WEXITSTATUS(status) ==
-		  test_cases[i].exp_errno))
+		if ((WIFEXITED(status)) &&
+			  (WEXITSTATUS(status) == test_cases[i].exp_errno)) {
 			tst_res(TPASS,
 				"ptrace() returned errno: %i as expected",
 				test_cases[i].exp_errno);
-		else
+		} else {
 			tst_res(TFAIL,
 				"ptrace() returned errno: %i, expected: %i",
 				WEXITSTATUS(status), test_cases[i].exp_errno);
+		}
 	}
 }
 
